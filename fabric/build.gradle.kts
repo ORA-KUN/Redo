@@ -1,3 +1,5 @@
+import java.util.zip.ZipFile
+
 plugins {
     // Applies the right Loom variant for the Minecraft version (26.1+ is unobfuscated)
     id("dev.kikugie.loom-back-compat")
@@ -89,7 +91,7 @@ tasks {
                     // "grep <regex>": lists the class names matching the regex
                     val regex = Regex(line.removePrefix("grep ").trim())
                     jars.forEach { jar ->
-                        java.util.zip.ZipFile(jar).use { zip ->
+                        ZipFile(jar).use { zip ->
                             zip.entries().asSequence().map { it.name }.filter { it.endsWith(".class") && regex.containsMatchIn(it) }
                                 .forEach { sb.append("CLASS ").append(it.removeSuffix(".class").replace('/', '.')).append('\n') }
                         }

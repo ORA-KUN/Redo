@@ -1,4 +1,5 @@
 import org.apache.commons.lang3.SystemUtils
+import java.util.zip.ZipFile
 
 plugins {
     java
@@ -130,7 +131,7 @@ tasks.register("redoProbe") {
             if (line.startsWith("grep ")) {
                 val regex = Regex(line.removePrefix("grep ").trim())
                 jars.forEach { jar ->
-                    java.util.zip.ZipFile(jar).use { zip ->
+                    ZipFile(jar).use { zip ->
                         zip.entries().asSequence().map { it.name }.filter { it.endsWith(".class") && regex.containsMatchIn(it) }
                             .forEach { sb.append("CLASS ").append(it.removeSuffix(".class").replace('/', '.')).append('\n') }
                     }
