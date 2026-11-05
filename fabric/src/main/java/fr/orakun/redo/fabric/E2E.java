@@ -58,10 +58,32 @@ final class E2E {
         ticks = 0;
     }
 
+    /** Saves a screenshot and logs its mean brightness, so a black or empty frame shows in the log. */
     private static void shot(String name) {
         Minecraft mc = Minecraft.getInstance();
         String file = String.format("e2e-%02d-%s.png", ++shots, name);
-        Screenshot.grab(mc.gameDirectory, file, mc.getMainRenderTarget(), 1, c -> log("screenshot " + file));
+        Screenshot.takeScreenshot(mc.getMainRenderTarget(), image -> {
+            try {
+                long sum = 0;
+                int n = 0;
+                for (int y = 0; y < image.getHeight(); y += 8) {
+                    for (int x = 0; x < image.getWidth(); x += 8) {
+                        int c = image.getPixel(x, y);
+                        sum += ((c & 0xFF) + ((c >> 8) & 0xFF) + ((c >> 16) & 0xFF)) / 3;
+                        n++;
+                    }
+                }
+                File dir = new File(mc.gameDirectory, "screenshots");
+                dir.mkdirs();
+                image.writeToFile(new File(dir, file));
+                log("screenshot " + file + " " + image.getWidth() + "x" + image.getHeight() + ", mean brightness "
+                        + (n == 0 ? 0 : sum / n) + "/255");
+            } catch (Exception e) {
+                log("screenshot " + file + " failed: " + e);
+            } finally {
+                image.close();
+            }
+        });
     }
 
     /**

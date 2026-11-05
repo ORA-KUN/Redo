@@ -17,6 +17,8 @@ import net.minecraft.network.EnumPacketDirection;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.util.ScreenShotHelper;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.List;
 
@@ -61,7 +63,22 @@ final class LegacyE2E {
         Minecraft mc = Minecraft.getMinecraft();
         String file = String.format("e2e-%02d-%s.png", ++shots, name);
         ScreenShotHelper.saveScreenshot(mc.mcDataDir, file, mc.displayWidth, mc.displayHeight, mc.getFramebuffer());
-        log("screenshot " + file);
+        // mean brightness, so a black or empty frame shows in the log
+        try {
+            BufferedImage img = ImageIO.read(new File(new File(mc.mcDataDir, "screenshots"), file));
+            long sum = 0;
+            int n = 0;
+            for (int y = 0; y < img.getHeight(); y += 8) {
+                for (int x = 0; x < img.getWidth(); x += 8) {
+                    int c = img.getRGB(x, y);
+                    sum += ((c & 0xFF) + ((c >> 8) & 0xFF) + ((c >> 16) & 0xFF)) / 3;
+                    n++;
+                }
+            }
+            log("screenshot " + file + " " + img.getWidth() + "x" + img.getHeight() + ", mean brightness " + (n == 0 ? 0 : sum / n) + "/255");
+        } catch (Exception e) {
+            log("screenshot " + file + " not readable: " + e);
+        }
     }
 
     /** Called at the start of every frame; counts its own 20 Hz ticks from the wall clock. */
