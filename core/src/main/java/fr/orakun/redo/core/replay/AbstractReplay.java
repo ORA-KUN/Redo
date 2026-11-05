@@ -92,6 +92,7 @@ public abstract class AbstractReplay implements ReplayBackend {
     }
 
     /** The earliest replay time that shows a world; seeks before it land on it. */
+    @Override
     public long startMs() {
         return startMs;
     }
@@ -201,6 +202,7 @@ public abstract class AbstractReplay implements ReplayBackend {
      */
     public int exportStep(double t, float[] partial) {
         if (seekTarget >= 0) return -1;
+        t = Math.max(t, startMs); // before the world exists, the first moment of it is shown
         long needed = (long) Math.floor(t / TICK_MS) * TICK_MS + TICK_MS;
         int ticks = (int) ((needed - tickTime) / TICK_MS);
         partial[0] = (float) ((t - (needed - TICK_MS)) / TICK_MS);

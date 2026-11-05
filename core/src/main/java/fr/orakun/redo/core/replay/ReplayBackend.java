@@ -11,6 +11,9 @@ public interface ReplayBackend {
     /** Length of the recording. */
     long durationMs();
 
+    /** Earliest replay time with a world to show (the recording starts during the login). */
+    long startMs();
+
     /** Current replay time, including the sub-tick part. */
     double timeMs();
 

@@ -38,6 +38,7 @@ public final class MomentDetector {
         all.addAll(explosions());
         Moment start = start();
         if (start != null) all.add(start);
+        clampToStart(all);
         applyHighlights(all);
         Collections.sort(all, new Comparator<Moment>() {
             @Override
@@ -300,15 +301,26 @@ public final class MomentDetector {
 
     private Moment start() {
         if (track.selfId() == Integer.MIN_VALUE) return null;
-        int t = Math.min(8000, track.durationMs() / 10);
+        int first = track.startMs();
+        int t = first + Math.min(8000, Math.max(0, track.durationMs() - first) / 10);
         Vec3d p = track.positionAt(track.selfId(), t);
         if (p == null) return null;
-        Moment m = new Moment(Moment.Kind.START, Math.max(0, t - 2000), t + 6000, t, p, 0.25, "Ouverture");
+        Moment m = new Moment(Moment.Kind.START, Math.max(first, t - 2000), t + 6000, t, p, 0.25, "Ouverture");
         m.subjects.add(track.selfId());
         return m;
     }
 
     // ---------------------------------------------------------------- post
+
+    /** Nothing can be filmed before the world exists (the recording starts during the login). */
+    private void clampToStart(List<Moment> all) {
+        int first = track.startMs();
+        for (Moment m : all) {
+            if (m.startMs < first) m.startMs = first;
+            if (m.peakMs < m.startMs) m.peakMs = m.startMs;
+            if (m.endMs < m.peakMs) m.endMs = m.peakMs;
+        }
+    }
 
     private void applyHighlights(List<Moment> all) {
         if (meta.highlights.isEmpty()) return;

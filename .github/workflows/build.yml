@@ -110,6 +110,11 @@ jobs:
             java: |
               21
               25
+          - loader: fabric
+            mc: "26.3"
+            java: |
+              21
+              25
           - loader: forge
             mc: "1.8.9"
             java: |

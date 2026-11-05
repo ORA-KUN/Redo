@@ -95,6 +95,13 @@ public final class EventTrack {
         return durationMs;
     }
 
+    /** Time of the first sample of the recording player: the world exists from there on. */
+    public int startMs() {
+        int t = Integer.MAX_VALUE;
+        for (SelfSample s : self) t = Math.min(t, s.timeMs);
+        return t == Integer.MAX_VALUE ? 0 : t;
+    }
+
     public int selfId() {
         return selfId;
     }

@@ -83,7 +83,7 @@ final class Compat {
     /** Whether a key binding is bound to a keyboard key (not a mouse button). */
     static boolean isKeyboard(InputConstants.Key key) {
         //? if >=26.3 {
-        /*return key.getName().startsWith("key.keyboard.");
+        /*return key.getType() == InputConstants.Type.KEYBOARD;
         *///?} else {
         return key.getType() == InputConstants.Type.KEYSYM;
         //?}

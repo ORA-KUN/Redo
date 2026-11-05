@@ -208,6 +208,10 @@ final class LegacyE2E {
                             + (s == null ? -1 : s.sequence.clips.size()) + " clips, " + (s == null ? -1 : s.edit.suggestions.size())
                             + " suggested shots");
                     shot("editor");
+                    if (s == null || s.edit.suggestions.isEmpty() || s.sequence.clips.isEmpty()) {
+                        fail("the automatic analysis proposed no shot or no trailer (see \"Analysis failed\" above)");
+                        return;
+                    }
                     next(Step.PLAY);
                 } else if (ticks > 20 * 120) {
                     shot("editor-missing");

@@ -191,6 +191,9 @@ public final class EditorSession {
             return;
         }
         backend.setCamera(camera);
+        // before the world exists (the login), the clip holds still on the first moment of it
+        boolean beforeWorld = replayTime >= 0 && replayTime < backend.startMs();
+        if (beforeWorld) replayTime = backend.startMs();
         double now = backend.timeMs();
         boolean jumped = clip != lastClip || Math.abs(now - replayTime) > (playing ? 600 : 40);
         lastClip = clip;
@@ -210,7 +213,7 @@ public final class EditorSession {
             seekPending = false;
         }
         backend.setSpeed(clip.speed);
-        backend.setPaused(!playing);
+        backend.setPaused(!playing || beforeWorld);
     }
 
     // ------------------------------------------------------------------ playback

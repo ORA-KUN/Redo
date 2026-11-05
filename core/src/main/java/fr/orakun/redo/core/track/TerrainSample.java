@@ -49,7 +49,12 @@ public final class TerrainSample {
     }
 
     public String surfaceAt(int ix, int iz) {
-        int idx = surface[iz * size + ix] & 0xFF;
+        return surfaceOf(iz * size + ix);
+    }
+
+    /** Surface of cell i, or "" when it was not loaded (index -1) or is unknown. */
+    private String surfaceOf(int i) {
+        int idx = surface[i] & 0xFF;
         return idx < palette.length ? palette[idx] : "";
     }
 
@@ -77,20 +82,22 @@ public final class TerrainSample {
         return Math.sqrt(Math.max(0, sq / n - mean * mean));
     }
 
-    /** Share of cells whose surface is water. */
+    /** Share of the known cells whose surface is water. */
     public double waterRatio() {
-        int w = 0;
+        int w = 0, known = 0;
         for (int i = 0; i < surface.length; i++) {
-            String s = palette[surface[i] & 0xFF];
+            String s = surfaceOf(i);
+            if (s.isEmpty()) continue;
+            known++;
             if (s.contains("water") || s.contains("ice")) w++;
         }
-        return w / (double) surface.length;
+        return known == 0 ? 0 : w / (double) known;
     }
 
     public int count(String needle) {
         int c = 0;
         for (int i = 0; i < surface.length; i++) {
-            if (palette[surface[i] & 0xFF].contains(needle)) c++;
+            if (surfaceOf(i).contains(needle)) c++;
         }
         return c;
     }
