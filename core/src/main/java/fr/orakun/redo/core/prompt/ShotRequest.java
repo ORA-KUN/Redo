@@ -33,12 +33,18 @@ public final class ShotRequest {
         public double height = 1;
         public double motion = 1;
         public int side;
+        /** Id of a place of the scenery from the summary ("p3"), or null. */
+        public String placeId;
+        /** A place described in words, found in the scenery when the shot is built, or null. */
+        public PlaceQuery place;
 
         @Override
         public String toString() {
             return (type == null ? "auto" : type.name()) + (momentId != null ? " @" + momentId : "")
                     + (kind != null ? " " + kind.name() : "") + (subject != null ? " on " + subject : "")
-                    + (atSec >= 0 ? " at " + atSec + "s" : "");
+                    + (placeId != null ? " place " + placeId : "") + (place != null ? " place " + place : "")
+                    + (atSec >= 0 ? " at " + atSec + "s" : "") + (durationSec > 0 ? " for " + durationSec + "s" : "")
+                    + (motion != 1 ? " motion " + motion : "");
         }
     }
 
@@ -96,6 +102,7 @@ public final class ShotRequest {
         kind.put("enum", kinds);
         shot.put("kind", kind);
         shot.put("subject", prop("string", "Exact player name from the summary, 'self' for the recording player, or empty"));
+        shot.put("place", prop("string", "Id of a place of the scenery from the summary (e.g. p3) to film it instead of a player, or empty"));
         shot.put("at_seconds", prop("number", "Replay time where the shot starts, or -1"));
         shot.put("duration_seconds", prop("number", "Shot length, or -1 for the default"));
         shot.put("speed", prop("number", "Playback speed: 1 normal, 0.25 slow motion, 4 fast; 0 for the default"));
@@ -138,6 +145,8 @@ public final class ShotRequest {
                 for (Moment.Kind k : Moment.Kind.values()) if (k.name().equalsIgnoreCase(kind)) spec.kind = k;
                 String subject = Json.getString(s, "subject", "").trim();
                 spec.subject = subject.isEmpty() ? null : subject;
+                String place = Json.getString(s, "place", "").trim();
+                spec.placeId = place.isEmpty() ? null : place;
                 spec.atSec = Json.getDouble(s, "at_seconds", -1);
                 spec.durationSec = Json.getDouble(s, "duration_seconds", -1);
                 double speed = Json.getDouble(s, "speed", 0);

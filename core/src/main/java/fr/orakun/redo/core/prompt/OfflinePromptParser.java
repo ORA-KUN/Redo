@@ -1,6 +1,8 @@
 package fr.orakun.redo.core.prompt;
 
+import fr.orakun.redo.core.director.Landmark;
 import fr.orakun.redo.core.director.Moment;
+import fr.orakun.redo.core.director.Scene;
 import fr.orakun.redo.core.director.ShotType;
 import fr.orakun.redo.core.director.TrailerBuilder;
 
@@ -62,21 +64,35 @@ public final class OfflinePromptParser {
             ShotType type = shotType(p);
             Moment.Kind kind = kind(p);
             String subject = subject(p, players, selfName);
-            boolean trailerOnly = r.trailer && type == null && kind == null && subject == null;
+            PlaceQuery place = place(p);
+            // "la maison", "le décor": the place itself, not a building moment of the game
+            if (place != null && (kind == Moment.Kind.BUILD || kind == Moment.Kind.SCENERY)
+                    && !has(p, "construction", "construit", "pendant", "during", "quand ", "when ")) {
+                kind = null;
+            }
+            if (place != null && subject != null && !place.wholePlace) place = subject.equals("self") && place.pick == Scene.Pick.NEAREST ? place : null;
+            boolean trailerOnly = r.trailer && type == null && kind == null && subject == null && place == null;
             if (trailerOnly) continue;
-            if (type == null && kind == null && subject == null && !has(p, "plan", "shot", "camera", "cam ", "filme", "film ")) continue;
-            if (subject == null) subject = lastSubject;
+            if (type == null && kind == null && subject == null && place == null
+                    && !has(p, "plan", "shot", "camera", "cam ", "filme", "film ")) {
+                continue;
+            }
+            if (subject == null && place == null) subject = lastSubject;
             lastSubject = subject;
 
             ShotRequest.Spec spec = new ShotRequest.Spec();
             spec.type = type;
             spec.kind = kind;
-            spec.subject = subject;
+            spec.subject = place != null ? null : subject;
+            spec.place = place;
             Matcher t = TIME.matcher(p);
             if (t.find()) spec.atSec = Integer.parseInt(t.group(1)) * 60 + (t.group(2) != null ? Integer.parseInt(t.group(2)) : 0);
             if (!r.trailer) {
                 double d = durationIn(p);
                 if (d > 0) spec.durationSec = Math.max(1, Math.min(60, d));
+                else if (has(p, "tres long", "very long", "interminable")) spec.durationSec = 20;
+                else if (word(p, "long", "longue", "longs", "longues")) spec.durationSec = 14;
+                else if (word(p, "court", "courte", "bref", "breve", "short", "quick")) spec.durationSec = 3;
             }
             if (has(p, "ralenti", "slow-mo", "slowmo", "slow motion", "au ralenti")) spec.speed = 0.3;
             if (has(p, "accelere", "timelapse", "fast forward", "en rapide")) spec.speed = 4;
@@ -92,7 +108,8 @@ public final class OfflinePromptParser {
             if (has(p, "tres haut", "very high", "du ciel", "from the sky")) spec.height = 3;
             else if (has(p, " en hauteur", " haut ", " high ", " above ")) spec.height = 1.8;
             else if (has(p, " ras du sol", " au sol", "ground level", " bas ", " low ")) spec.height = 0.3;
-            if (has(p, "lentement", "doucement", "slowly", "gently", " lent ", " lente ")) spec.motion = 0.55;
+            if (has(p, "tres lent", "very slow")) spec.motion = 0.35;
+            else if (has(p, "lentement", "doucement", "slowly", "gently", " slow ") || word(p, "lent", "lente", "lents", "lentes")) spec.motion = 0.55;
             else if (has(p, " vite", "rapidement", "quickly", " fast ", "rapide ")) spec.motion = 1.7;
             if (has(p, "gauche", " left", "anti-horaire", "counter-clockwise", "counterclockwise")) spec.side = -1;
             else if (has(p, "droite", " right", "horaire", "clockwise")) spec.side = 1;
@@ -110,6 +127,7 @@ public final class OfflinePromptParser {
         }
 
         StringBuilder reply = new StringBuilder();
+        // the reply is written once the places are found in the scenery (see PromptService)
         if (!r.shots.isEmpty()) reply.append(r.shots.size()).append(r.shots.size() > 1 ? " plans préparés" : " plan préparé");
         if (r.trailer) {
             if (reply.length() > 0) reply.append(" et ");
@@ -132,6 +150,8 @@ public final class OfflinePromptParser {
         c.height = s.height;
         c.motion = s.motion;
         c.side = s.side;
+        c.place = s.place;
+        c.placeId = s.placeId;
         return c;
     }
 
@@ -148,6 +168,114 @@ public final class OfflinePromptParser {
         }
     }
 
+    /** True if one of the words appears whole ("tour" but not "autour"). */
+    static boolean word(String text, String... words) {
+        for (String w : words) {
+            int i = text.indexOf(w);
+            while (i >= 0) {
+                boolean before = i == 0 || !Character.isLetterOrDigit(text.charAt(i - 1));
+                int end = i + w.length();
+                boolean after = end >= text.length() || !Character.isLetterOrDigit(text.charAt(end));
+                if (before && after) return true;
+                i = text.indexOf(w, i + 1);
+            }
+        }
+        return false;
+    }
+
+    /** The part of the scenery named in a request, or null. */
+    static PlaceQuery place(String p) {
+        PlaceQuery q = new PlaceQuery();
+        if (word(p, "arbre", "arbres", "tree", "trees", "chene", "sapin", "bouleau", "acacia", "cerisier", "palmier", "baobab")) {
+            q.kinds.add(Landmark.Kind.TREE);
+            q.noun = "arbre";
+        }
+        if (word(p, "tour", "tours", "tower", "towers", "donjon", "clocher", "phare", "lighthouse", "beffroi")) {
+            q.kinds.add(Landmark.Kind.TOWER);
+            q.noun = "tour";
+        }
+        if (word(p, "batiment", "batiments", "maison", "maisons", "building", "buildings", "house", "chateau", "castle", "eglise",
+                "church", "temple", "boutique", "shop", "cabane", "hut", "manoir", "palais", "palace", "immeuble", "hangar", "grange",
+                "barn", "auberge", "taverne", "pyramide", "pyramid", "arene", "arena", "stade")) {
+            q.kinds.add(Landmark.Kind.BUILDING);
+            q.kinds.add(Landmark.Kind.TOWER);
+            q.noun = "bâtiment";
+        }
+        if (word(p, "mur", "murs", "muraille", "rempart", "remparts", "wall", "walls", "enceinte")) {
+            q.kinds.add(Landmark.Kind.WALL);
+            q.noun = "mur";
+        }
+        if (word(p, "statue", "statues", "monument", "colonne", "pilier", "obelisque", "pillar", "totem", "sculpture", "stele")) {
+            q.kinds.add(Landmark.Kind.MONUMENT);
+            q.kinds.add(Landmark.Kind.TOWER);
+            q.noun = "monument";
+        }
+        if (word(p, "fontaine", "fontaines", "fountain", "bassin", "vasque")) {
+            q.kinds.add(Landmark.Kind.FOUNTAIN);
+            q.kinds.add(Landmark.Kind.WATER);
+            q.noun = "fontaine";
+        }
+        if (word(p, "lac", "eau", "etang", "riviere", "mare", "lake", "water", "pond", "river", "ocean", "mer", "cascade", "waterfall")) {
+            q.kinds.add(Landmark.Kind.WATER);
+            q.kinds.add(Landmark.Kind.FOUNTAIN);
+            q.noun = "eau";
+        }
+        if (word(p, "lave", "lava")) {
+            q.kinds.add(Landmark.Kind.LAVA);
+            q.noun = "lave";
+        }
+        if (word(p, "portail", "portails", "portal", "portals", "portique")) {
+            q.kinds.add(Landmark.Kind.PORTAL);
+            q.noun = "portail";
+        }
+        String[][] blocks = {
+                {"balise", "Balise"}, {"beacon", "Balise"}, {"cloche", "Cloche"}, {"bell", "Cloche"}, {"enclume", "Enclume"},
+                {"anvil", "Enclume"}, {"table d'enchantement", "Table d'enchantement"}, {"enchanting table", "Table d'enchantement"},
+                {"feu de camp", "Feu de camp"}, {"campfire", "Feu de camp"}, {"jukebox", "Jukebox"}, {"oeuf de dragon", "Œuf de dragon"},
+                {"dragon egg", "Œuf de dragon"}, {"spawner", "Générateur"}, {"generateur", "Générateur"}, {"alambic", "Alambic"}};
+        for (String[] b : blocks) {
+            if (p.contains(b[0])) {
+                q.kinds.add(Landmark.Kind.BLOCK);
+                q.labelHint = b[1];
+                q.noun = b[0];
+                break;
+            }
+        }
+        boolean placeWord = word(p, "hub", "spawn", "lobby", "village", "ville", "town", "place", "square", "map", "carte", "arene");
+        if (q.kinds.isEmpty()) {
+            if (!placeWord || !has(p, "autour", "around", "survol", "drone", "au-dessus", "over ", "plan large", "vue d'ensemble",
+                    "panoramique", "travel", "orbit", "tourne", "filme", "wide")) {
+                return null;
+            }
+            q.wholePlace = true;
+            q.noun = "hub";
+        }
+        if (has(p, "au centre", "au milieu", "central", "centrale", "du centre", "middle", "center", "centre du", "en plein milieu")) {
+            q.pick = Scene.Pick.CENTRAL;
+        } else if (has(p, "plus grand", "plus grande", "plus gros", "plus grosse", "plus haut", "plus haute", "immense", "geant",
+                "gigantesque", "enorme", "biggest", "tallest", "largest", "huge", "giant")) {
+            q.pick = Scene.Pick.BIGGEST;
+        } else if (has(p, "plus petit", "plus petite", "smallest", "minuscule", "tiny")) {
+            q.pick = Scene.Pick.SMALLEST;
+        } else if (has(p, "pres de moi", "a cote de moi", "proche de moi", "devant moi", "derriere moi", "near me", "next to me",
+                "in front of me", "le plus proche", "la plus proche", "closest", "nearest")) {
+            q.pick = Scene.Pick.NEAREST;
+        }
+        String[][] dirs = {{"nord-est", "nord-est"}, {"nord est", "nord-est"}, {"north-east", "nord-est"}, {"northeast", "nord-est"},
+                {"nord-ouest", "nord-ouest"}, {"nord ouest", "nord-ouest"}, {"north-west", "nord-ouest"}, {"northwest", "nord-ouest"},
+                {"sud-est", "sud-est"}, {"sud est", "sud-est"}, {"south-east", "sud-est"}, {"southeast", "sud-est"},
+                {"sud-ouest", "sud-ouest"}, {"sud ouest", "sud-ouest"}, {"south-west", "sud-ouest"}, {"southwest", "sud-ouest"},
+                {"au nord", "nord"}, {"north", "nord"}, {"au sud", "sud"}, {"south", "sud"}, {"a l'est", "est"}, {" east", "est"},
+                {"a l'ouest", "ouest"}, {" west", "ouest"}};
+        for (String[] d : dirs) {
+            if (p.contains(d[0])) {
+                q.direction = d[1];
+                break;
+            }
+        }
+        return q;
+    }
+
     private static double durationIn(String p) {
         double total = 0;
         Matcher m = MINUTES.matcher(p);
@@ -160,15 +288,15 @@ public final class OfflinePromptParser {
     static ShotType shotType(String p) {
         if (has(p, "contre-plongee", "contre plongee", "low angle", "low-angle", "par en dessous", "from below")) return ShotType.LOW_ANGLE;
         if (has(p, "plongee", "high angle", "high-angle", "vue de haut", "par au-dessus", "from above", "top down", "top-down")) return ShotType.HIGH_ANGLE;
-        if (has(p, "orbit", "tourne autour", "tourner autour", "360", "autour de", "around ", "circle")) return ShotType.ORBIT;
+        if (has(p, "orbit", "tourne autour", "tourner autour", "360", "autour d", "around ", "circle", "en cercle", "en rond")) return ShotType.ORBIT;
         if (has(p, "drone", "survol", "vue du ciel", "aerien", "aerial", "flyover", "fly over", "vue aerienne")) return ShotType.DRONE;
-        if (has(p, "travelling avant", "dolly in", "push in", "zoom avant", "s'approche", "approche de", "zoom in")) return ShotType.DOLLY_IN;
-        if (has(p, "travelling arriere", "dolly out", "pull out", "pull back", "zoom arriere", "recule", "s'eloigne", "zoom out", "reveal")) return ShotType.DOLLY_OUT;
+        if (has(p, "travelling avant", "traveling avant", "dolly in", "push in", "zoom avant", "s'approche", "approche de", "zoom in", "vers l'avant")) return ShotType.DOLLY_IN;
+        if (has(p, "travelling arriere", "traveling arriere", "dolly out", "pull out", "pull back", "zoom arriere", "recule", "s'eloigne", "zoom out", "reveal")) return ShotType.DOLLY_OUT;
         if (has(p, "epaule", "shoulder")) return ShotType.OVER_SHOULDER;
         if (has(p, "gros plan", "close-up", "close up", "closeup", "visage", "face ")) return ShotType.CLOSE_UP;
         if (has(p, "pov", "point de vue", "premiere personne", "first person", "first-person", "ses yeux", "his eyes", "her eyes")) return ShotType.POV;
         if (has(p, "suivi", "suit ", "suivre", "follow", "de dos", "derriere", "behind", "tracking")) return ShotType.FOLLOW;
-        if (has(p, "lateral", "truck", "de cote", "from the side", "side shot", "travelling")) return ShotType.TRUCK;
+        if (has(p, "lateral", "truck", "de cote", "from the side", "side shot", "travelling", "traveling", "longe", "le long de", "along")) return ShotType.TRUCK;
         if (has(p, "grue", "crane", "s'eleve", "monte vers", "rise", "jib")) return ShotType.CRANE;
         if (has(p, "panoramique", " pan ", "panorama", "balayage")) return ShotType.PAN;
         if (has(p, "penche", "dutch", "incline", "tilted")) return ShotType.DUTCH;
@@ -211,6 +339,8 @@ public final class OfflinePromptParser {
     public static List<String> examples() {
         List<String> l = new ArrayList<String>();
         l.add("orbite lente autour de moi pendant le combat");
+        l.add("traveling long et lent autour de l'arbre au centre du hub");
+        l.add("contre-plongée sur la plus grande tour");
         l.add("survol drone de la base puis plan large d'ouverture");
         l.add("ralenti sur le kill à 12:30");
         l.add("bande-annonce nerveuse de 30 s");

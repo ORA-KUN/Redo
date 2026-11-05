@@ -6,6 +6,8 @@ import fr.orakun.redo.core.camera.CameraKeyframe;
 import fr.orakun.redo.core.camera.CameraState;
 import fr.orakun.redo.core.director.Director;
 import fr.orakun.redo.core.director.Moment;
+import fr.orakun.redo.core.director.Scene;
+import fr.orakun.redo.core.director.SceneScanner;
 import fr.orakun.redo.core.director.ShotParams;
 import fr.orakun.redo.core.director.ShotSuggestion;
 import fr.orakun.redo.core.director.ShotType;
@@ -15,6 +17,7 @@ import fr.orakun.redo.core.export.FfmpegLocator;
 import fr.orakun.redo.core.format.EditFile;
 import fr.orakun.redo.core.format.RedoArchive;
 import fr.orakun.redo.core.math.Easing;
+import fr.orakun.redo.core.math.Vec3d;
 import fr.orakun.redo.core.prompt.ClaudeClient;
 import fr.orakun.redo.core.prompt.PromptService;
 import fr.orakun.redo.core.replay.ReplayBackend;
@@ -571,7 +574,18 @@ public final class EditorSession {
         String key = Redo.config().claudeApiKey;
         ClaudeClient client = key == null || key.trim().isEmpty() ? null
                 : new ClaudeClient(key, Redo.config().claudeModel, Redo.userAgent());
-        new PromptService(director, archive.meta).run(text.trim(), client, seed++, mainThread, new PromptService.Callback() {
+        long now = (long) backend.timeMs();
+        Vec3d self = selfPosition(now);
+        Scene scene = null;
+        try {
+            CameraState cam = backend.currentCamera();
+            Vec3d around = self != null ? self : cam == null ? null : new Vec3d(cam.x, cam.y, cam.z);
+            Vec3d spawn = selfPosition(track.startMs());
+            scene = SceneScanner.scan(backend.world(), around, spawn != null ? spawn : around);
+        } catch (RuntimeException e) {
+            RedoLog.warn("Could not read the scenery: " + e);
+        }
+        new PromptService(director, archive.meta).withScene(scene, now, self).run(text.trim(), client, seed++, mainThread, new PromptService.Callback() {
             @Override
             public void done(PromptService.Result r) {
                 promptBusy = false;
@@ -597,6 +611,19 @@ public final class EditorSession {
                 markDirty();
             }
         });
+    }
+
+    /** Where the recording player stood at that time, or the nearest known position. */
+    private Vec3d selfPosition(long t) {
+        int id = track.selfId();
+        if (id == Integer.MIN_VALUE) return null;
+        Vec3d p = track.positionAt(id, t);
+        if (p != null) return p;
+        java.util.List<fr.orakun.redo.core.track.EntitySample> l = track.samples(id);
+        if (l == null || l.isEmpty()) return null;
+        fr.orakun.redo.core.track.EntitySample best = l.get(0);
+        for (fr.orakun.redo.core.track.EntitySample e : l) if (Math.abs(e.timeMs - t) < Math.abs(best.timeMs - t)) best = e;
+        return best.pos();
     }
 
     // ------------------------------------------------------------------ export

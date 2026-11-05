@@ -2,12 +2,15 @@ package fr.orakun.redo.core.prompt;
 
 import fr.orakun.redo.core.RedoLog;
 import fr.orakun.redo.core.director.Director;
+import fr.orakun.redo.core.director.Landmark;
 import fr.orakun.redo.core.director.Moment;
+import fr.orakun.redo.core.director.Scene;
 import fr.orakun.redo.core.director.ShotParams;
 import fr.orakun.redo.core.director.ShotSuggestion;
 import fr.orakun.redo.core.director.ShotType;
 import fr.orakun.redo.core.director.TrailerBuilder;
 import fr.orakun.redo.core.format.RedoMeta;
+import fr.orakun.redo.core.math.Vec3d;
 import fr.orakun.redo.core.timeline.Sequence;
 import fr.orakun.redo.core.track.EntityInfo;
 import fr.orakun.redo.core.track.EventTrack;
@@ -45,16 +48,38 @@ public final class PromptService {
                     + "- Use AUTO as the type when the user does not say how to film; pick types that suit the moment otherwise.\n"
                     + "- Slow motion means speed around 0.3; keep default values (1, 0, -1) for anything the user does not ask.\n"
                     + "- Set trailer.enabled only when the user asks for a trailer, teaser, recap or full edit.\n"
+                    + "- When the user names something of the scenery (a tree, a building, a tower, a fountain, water, a portal...), "
+                    + "set place to the id of the matching place from the scenery list and leave subject empty. 'au centre du hub', "
+                    + "'au milieu' means the matching place nearest to the centre; 'le plus grand' the biggest; 'près de moi' the "
+                    + "nearest to the recording player; a compass direction is from the centre. If nothing in the list matches, "
+                    + "return no shot for it and say so in reply.\n"
+                    + "- Around something (autour, orbit, travelling circulaire) is ORBIT; a travelling along it is TRUCK; towards it "
+                    + "DOLLY_IN; flying over it DRONE; rising up it CRANE; looking up at it LOW_ANGLE.\n"
+                    + "- Long means a duration of about 14 s (very long 20 s, short 3 s); slow means motion 0.5 (very slow 0.35).\n"
                     + "- Never invent players or moments that are not in the summary. If nothing matches, return no shots and "
                     + "explain why in reply.\n"
                     + "- reply is one short sentence in the user's language.";
 
     private final Director director;
     private final RedoMeta meta;
+    private Scene scene;
+    private long nowMs = -1;
+    private Vec3d self;
 
     public PromptService(Director director, RedoMeta meta) {
         this.director = director;
         this.meta = meta;
+    }
+
+    /**
+     * The scenery around the recording player (read on the main thread before the request), the
+     * replay time the user is looking at and where the recording player stands then.
+     */
+    public PromptService withScene(Scene scene, long nowMs, Vec3d self) {
+        this.scene = scene;
+        this.nowMs = nowMs;
+        this.self = self;
+        return this;
     }
 
     /** Text summary of the recording sent to Claude with the request. */
@@ -80,6 +105,8 @@ public final class PromptService {
             }
             sb.append(who.isEmpty() ? "-" : join(who)).append(" | ").append(m.label).append('\n');
         }
+        if (nowMs >= 0) sb.append("The user is looking at replay time ").append(Director.formatTime(nowMs)).append(".\n");
+        if (scene != null) sb.append(scene.summary());
         sb.append("Shot types: ");
         for (ShotType t : ShotType.values()) sb.append(t.name()).append(" (").append(t.label).append("), ");
         sb.setLength(sb.length() - 2);
@@ -149,7 +176,22 @@ public final class PromptService {
         EventTrack track = director.track();
         List<Moment> moments = director.moments();
         int i = 0;
+        List<String> missing = new ArrayList<String>();
         for (ShotRequest.Spec spec : req.shots) {
+            Landmark place = null;
+            if (spec.placeId != null || spec.place != null) {
+                place = resolvePlace(spec);
+                if (place == null) {
+                    String what = spec.place != null && !spec.place.noun.isEmpty() ? spec.place.noun : "cet élément du décor";
+                    if (!missing.contains(what)) missing.add(what);
+                    continue;
+                }
+            }
+            if (place != null) {
+                ShotSuggestion s = placeShot(spec, place, seed + 7919L * (i++));
+                if (s != null) r.shots.add(s);
+                continue;
+            }
             int subject = resolveSubject(spec.subject, track);
             Moment m = null;
             if (spec.momentId != null && spec.momentId.matches("[mM]\\d+")) {
@@ -187,15 +229,91 @@ public final class PromptService {
             r.trailer = TrailerBuilder.build(pool, style, "Bande-annonce " + style.label.toLowerCase(Locale.ROOT));
             if (req.trailerSec > 0) fitLength(r.trailer, (long) (req.trailerSec * 1000));
         }
-        r.message = req.reply != null && !req.reply.isEmpty() ? req.reply : describe(r);
+        boolean placed = false;
+        for (ShotSuggestion s : r.shots) placed |= s.place != null;
+        r.message = req.reply != null && !req.reply.isEmpty() && !(placed && "offline".equals(req.source)) ? req.reply : describe(r);
+        if (!missing.isEmpty()) {
+            String m = "Je n'ai pas trouvé " + (missing.size() == 1 ? article(missing.get(0)) : "ces éléments") + " dans le décor autour de toi"
+                    + (scene == null ? " (le monde n'est pas chargé ici)." : ".");
+            // nothing made: the reply would announce shots that are not there
+            r.message = r.shots.isEmpty() && r.trailer == null ? m : r.message.isEmpty() ? m : r.message + " " + m;
+        }
         if (r.shots.isEmpty() && r.trailer == null && r.message.isEmpty()) {
             r.message = "Je n'ai pas compris la demande. Exemple : « " + OfflinePromptParser.examples().get(0) + " ».";
         }
         return r;
     }
 
+    /** The place a shot asks for, found in the scenery. */
+    private Landmark resolvePlace(ShotRequest.Spec spec) {
+        if (scene == null) return null;
+        if (spec.placeId != null) return scene.byId(spec.placeId);
+        PlaceQuery q = spec.place;
+        if (q.wholePlace) {
+            // the place itself: its centre, as wide as what stands around it
+            double reach = 10;
+            for (Landmark l : scene.landmarks) if (l.distanceToCentre < 40) reach = Math.max(reach, l.distanceToCentre * 0.6);
+            Landmark c = new Landmark(Landmark.Kind.BUILDING, "Centre du " + q.noun, scene.centre, Math.min(reach, 24), 6, 0);
+            c.id = "centre";
+            return c;
+        }
+        if (q.labelHint != null) {
+            Landmark best = null;
+            for (Landmark l : scene.landmarks) {
+                if (!l.label.startsWith(q.labelHint)) continue;
+                if (best == null || (q.pick == Scene.Pick.CENTRAL ? l.distanceToCentre < best.distanceToCentre : l.size > best.size)) best = l;
+            }
+            return best;
+        }
+        Scene.Pick pick = q.pick;
+        // "l'arbre" alone in a hub: the one in the middle is the one people mean
+        if (pick == Scene.Pick.ANY && scene.centreFromBuildings) pick = Scene.Pick.CENTRAL;
+        if (pick == Scene.Pick.ANY) pick = Scene.Pick.BIGGEST;
+        Landmark found = scene.find(q.kinds, pick, q.direction, self);
+        // a big statue reads as a building: still the thing asked for
+        if (found == null && q.kinds.contains(Landmark.Kind.MONUMENT)) found = scene.find(Scene.kinds(Landmark.Kind.BUILDING), pick, q.direction, self);
+        return found;
+    }
+
+    private ShotSuggestion placeShot(ShotRequest.Spec spec, Landmark place, long seed) {
+        EventTrack track = director.track();
+        long at = spec.atSec >= 0 ? (long) (spec.atSec * 1000) : nowMs >= 0 ? nowMs : track.startMs();
+        Moment m = director.momentAt(at, Integer.MIN_VALUE);
+        m.label = place.label;
+        ShotType type = spec.type != null ? spec.type : ShotType.ORBIT;
+        ShotParams p = new ShotParams();
+        p.place = place;
+        p.sourceStartMs = Math.max(track.startMs(), at);
+        if (spec.durationSec > 0) p.durationMs = (long) (spec.durationSec * 1000);
+        if (!Double.isNaN(spec.speed)) p.speed = spec.speed;
+        p.distanceScale = spec.distance;
+        p.heightScale = spec.height;
+        p.motion = spec.motion;
+        p.side = spec.side;
+        ShotSuggestion s = director.generate(type, m, p, seed);
+        if (s == null) return null;
+        s.place = place;
+        s.description = type.label + " · " + place.label;
+        return s;
+    }
+
+    private static String article(String noun) {
+        if (noun.isEmpty()) return "cet élément";
+        char c = noun.charAt(0);
+        boolean vowel = "aeiouyéèêâàôh".indexOf(Character.toLowerCase(c)) >= 0;
+        boolean feminine = noun.equals("tour") || noun.equals("fontaine") || noun.equals("eau") || noun.equals("lave")
+                || noun.equals("balise") || noun.equals("cloche") || noun.equals("enclume") || noun.equals("statue");
+        return vowel ? "l'" + noun : (feminine ? "la " : "le ") + noun;
+    }
+
     private static String describe(Result r) {
         if (r.shots.isEmpty() && r.trailer == null) return "";
+        if (r.shots.size() == 1 && r.trailer == null && r.shots.get(0).place != null) {
+            ShotSuggestion s = r.shots.get(0);
+            Landmark l = s.place;
+            return s.description + (l.distanceToCentre < 4 ? " (au centre)" : "") + ", " + Director.formatTime(s.clip.durationMs)
+                    + ", ajouté au chutier.";
+        }
         StringBuilder sb = new StringBuilder();
         if (!r.shots.isEmpty()) sb.append(r.shots.size()).append(r.shots.size() > 1 ? " plans ajoutés au chutier" : " plan ajouté au chutier");
         if (r.trailer != null) {

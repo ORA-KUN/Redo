@@ -78,7 +78,7 @@ public final class EditorView implements View {
         this.s = s;
         this.host = host;
         this.timeline = new TimelineView(s);
-        prompt.placeholder = "Décris un plan… ex : orbite lente autour de moi pendant le combat";
+        prompt.placeholder = "Décris un plan… ex : traveling lent autour de l'arbre au centre du hub";
         prompt.onSubmit = new TextField.Listener() {
             @Override
             public void submit(String text) {

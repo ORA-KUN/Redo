@@ -77,8 +77,8 @@ grep -q "Done (" server.log || { echo "server did not start"; tail -50 server.lo
 echo "whitelist off" >&3
 echo "server ready"
 
-# Server-side "director": once the player is in, spawn animals and build a tower block by
-# block so the recording has entities, block changes and chat.
+# Server-side "director": once the player is in, spawn animals, plant a tree and build a tower
+# block by block so the recording has entities, scenery, block changes and chat.
 (
     for i in $(seq 1 400); do
         NAME=$(grep -oE '[A-Za-z0-9_]+ joined the game' server.log | head -1 | cut -d' ' -f1)
@@ -92,11 +92,13 @@ echo "server ready"
         AT="execute $NAME ~ ~ ~"
         MOBS="Pig Pig Cow Sheep Chicken Villager"; STAND="ArmorStand"; BOLT="LightningBolt"
         GOLD="gold_block"; GLOW="glowstone"
+        LOG="log"; LEAVES="leaves 4"
     else
         AT="execute at $NAME run"
         MOBS="minecraft:pig minecraft:pig minecraft:cow minecraft:sheep minecraft:chicken minecraft:villager"
         STAND="minecraft:armor_stand"; BOLT="minecraft:lightning_bolt"
         GOLD="minecraft:gold_block"; GLOW="minecraft:glowstone"
+        LOG="minecraft:oak_log"; LEAVES="minecraft:oak_leaves[persistent=true]"
     fi
     {
         echo "op $NAME"
@@ -106,6 +108,9 @@ echo "server ready"
             echo "$AT summon $m ~$((RANDOM % 9 - 4)) ~ ~$((RANDOM % 5 + 3))"
         done
         echo "$AT summon $STAND ~-3 ~ ~4"
+        # an oak for the scenery-reading prompt ("autour de l'arbre")
+        echo "$AT fill ~-6 ~ ~-6 ~-6 ~5 ~-6 $LOG"
+        echo "$AT fill ~-8 ~3 ~-8 ~-4 ~6 ~-4 $LEAVES keep"
     } >&3
     sleep 2
     echo "say Bonjour depuis le serveur de test" >&3

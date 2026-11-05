@@ -15,4 +15,16 @@ public interface WorldQuery {
 
     /** True if the chunk containing (x, z) is loaded, i.e. the answers above are meaningful. */
     boolean isLoaded(double x, double z);
+
+    /**
+     * Registry name of the block ("minecraft:oak_log"), "minecraft:air" for air, or null where the
+     * world is not loaded or the platform cannot tell (the scenery is then not analysed).
+     */
+    String blockName(int x, int y, int z);
+
+    /** Height of the highest block of the column (x, z), or Integer.MIN_VALUE if not loaded. */
+    int surfaceY(int x, int z);
+
+    /** Lowest block height of the world (0 on 1.8.9, -64 in the overworld of recent versions). */
+    int minY();
 }

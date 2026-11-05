@@ -15,6 +15,8 @@ public final class ShotSuggestion implements JsonSerializable {
     /** "auto", "prompt" or "manual". */
     public String origin = "auto";
     public boolean favorite;
+    /** The place of the scenery the shot films, when a prompt named one; not saved. */
+    public transient Landmark place;
 
     public ShotSuggestion(Clip clip, double score, String description, String momentKind) {
         this.clip = clip;

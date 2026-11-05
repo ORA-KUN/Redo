@@ -1,6 +1,10 @@
 package fr.orakun.redo.fabric;
 
 import fr.orakun.redo.core.Redo;
+import fr.orakun.redo.core.director.Landmark;
+import fr.orakun.redo.core.director.Scene;
+import fr.orakun.redo.core.director.SceneScanner;
+import fr.orakun.redo.core.director.ShotSuggestion;
 import fr.orakun.redo.core.editor.EditorSession;
 import fr.orakun.redo.core.editor.EditorView;
 import fr.orakun.redo.core.export.ExportJob;
@@ -34,7 +38,7 @@ import java.util.List;
 final class E2E {
     static final boolean ENABLED = Boolean.getBoolean("redo.e2e");
 
-    private enum Step { JOIN, RECORD, LEAVE, OPEN, EDITOR, PLAY, SEEK, EXPORT, EXIT, DONE }
+    private enum Step { JOIN, RECORD, LEAVE, OPEN, EDITOR, PLAY, SEEK, EXPORT, SCENERY, EXIT, DONE }
 
     private static Step step = Step.JOIN;
     private static int ticks;
@@ -47,9 +51,21 @@ final class E2E {
     private static int editorLostTicks;
     private static String editorLostTo = "";
     private static long seekTo;
+    private static boolean promptSent;
+    private static int promptTicks;
     private static File recording;
 
     private E2E() {
+    }
+
+    static final String TREE_PROMPT = "Fais un traveling long et lent autour de l'arbre présent au centre du hub";
+
+    /** Where the recording player stands at the current replay time. */
+    private static fr.orakun.redo.core.math.Vec3d selfAt(EditorSession s) {
+        fr.orakun.redo.core.math.Vec3d p = s.track.positionAt(s.track.selfId(), s.backend.timeMs());
+        if (p != null) return p;
+        fr.orakun.redo.core.camera.CameraState cam = s.backend.currentCamera();
+        return cam == null ? null : new fr.orakun.redo.core.math.Vec3d(cam.x, cam.y, cam.z);
     }
 
     private static void log(String s) {
@@ -420,7 +436,7 @@ final class E2E {
                 if (ticks == 1) {
                     if (s.sequence.clips.isEmpty()) {
                         log("no automatic trailer: skipping the export");
-                        next(Step.EXIT);
+                        next(Step.SCENERY);
                         return;
                     }
                     s.sequence.export.fps = 30;
@@ -445,10 +461,49 @@ final class E2E {
                         fail("exported file is empty");
                         return;
                     }
-                    next(Step.EXIT);
+                    next(Step.SCENERY);
                 } else if (job.state() == ExportJob.State.FAILED || job.state() == ExportJob.State.CANCELLED) {
                     fail("export " + job.state() + ": " + job.error());
                 }
+                break;
+            }
+            case SCENERY: {
+                // the prompt reads the scenery: the test server planted an oak next to the player
+                ReplayController c = ReplayController.current();
+                EditorSession s = c.session();
+                if (ticks == 1) {
+                    s.stopPreview();
+                    c.replay.seek(Math.max(c.replay.startMs(), c.replay.durationMs() - 1500));
+                }
+                if (!promptSent) {
+                    if (ticks > 20 && !c.replay.isSeeking() && !c.replay.isHoldingImage()) {
+                        Scene scene = SceneScanner.scan(s.backend.world(), selfAt(s), selfAt(s));
+                        log("scenery: " + (scene == null ? "not readable" : scene.summary().replace('\n', ' ')));
+                        s.runPrompt(TREE_PROMPT);
+                        promptSent = true;
+                        promptTicks = ticks;
+                    } else if (ticks > 20 * 60) {
+                        fail("the replay did not settle before the scenery test");
+                    }
+                    return;
+                }
+                if (s.promptBusy) {
+                    if (ticks - promptTicks > 20 * 30) fail("the prompt did not answer");
+                    return;
+                }
+                ShotSuggestion tree = null;
+                for (ShotSuggestion x : s.edit.suggestions) if (x.place != null && tree == null) tree = x;
+                log("prompt \"" + TREE_PROMPT + "\": " + s.promptMessage);
+                if (tree == null || tree.place.kind != Landmark.Kind.TREE) {
+                    fail("the prompt did not find the tree of the scenery: " + s.promptMessage);
+                    return;
+                }
+                if (tree.clip.durationMs != 14000 || !"ORBIT".equals(tree.clip.shotType)) {
+                    fail("the shot around the tree is not a long slow orbit: " + tree.clip.shotType + " " + tree.clip.durationMs + " ms");
+                    return;
+                }
+                shot("prompt-tree");
+                next(Step.EXIT);
                 break;
             }
             case EXIT:

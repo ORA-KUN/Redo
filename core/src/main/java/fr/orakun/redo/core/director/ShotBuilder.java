@@ -59,6 +59,11 @@ public final class ShotBuilder {
         long first = Math.max(0, track.startMs());
         source = Math.max(first, Math.min(source, Math.max(first, track.durationMs() - cover)));
 
+        Landmark place = p.place;
+        if (place != null) {
+            subject = Integer.MIN_VALUE;
+            focus = place.base;
+        }
         if (subject != Integer.MIN_VALUE && track.positionAt(subject, source + cover / 2.0) == null) {
             subject = Integer.MIN_VALUE; // no data for this entity then: film the place instead
         }
@@ -71,10 +76,12 @@ public final class ShotBuilder {
         c.sourceStartMs = source;
         c.speed = speed;
         c.subjectEntity = subject;
-        c.name = type.label + (m.label == null || m.label.isEmpty() ? "" : " · " + m.label);
+        c.name = type.label + (place != null ? " · " + place.label : m.label == null || m.label.isEmpty() ? "" : " · " + m.label);
         Context ctx = new Context(c, subject, focus, p, side, rng);
         lastOcclusion = 0;
-        if (subject == Integer.MIN_VALUE && type.needsSubject()) {
+        if (place != null) {
+            buildAround(type, ctx, place);
+        } else if (subject == Integer.MIN_VALUE && type.needsSubject()) {
             buildPlace(ShotType.ESTABLISHING, ctx);
         } else {
             switch (type) {
@@ -184,6 +191,95 @@ public final class ShotBuilder {
         Vec3d end = f.add(dir.mul(dist * 0.85)).add(perp(dir).mul(4 * c.side * c.p.motion)).add(0, up * 0.9, 0);
         key(c, 0, start, f.add(0, 2, 0), 0, Easing.SMOOTH);
         key(c, c.duration(), end, f.add(0, 2, 0), 0, Easing.LINEAR);
+    }
+
+    /**
+     * Shots of a part of the scenery: the camera moves around, along, towards or over it, always
+     * framing it whole (its size sets the distance).
+     */
+    private void buildAround(ShotType type, Context c, Landmark l) {
+        long d = c.duration();
+        Vec3d base = l.base;
+        double h = Math.max(2, l.height);
+        double r = Math.max(1, l.radius);
+        Vec3d look = base.add(0, h * (l.kind == Landmark.Kind.TREE ? 0.55 : 0.45), 0);
+        double dist = c.dist(Math.max(Math.max(r * 2.0 + 5, h * 1.15), 8));
+        double eye = base.y + c.height(Math.max(2, h * 0.45));
+        // start on the side of the recording player: the place as the user saw it
+        double start;
+        Vec3d self = track.selfId() == Integer.MIN_VALUE ? null : track.positionAt(track.selfId(), c.clip.sourceStartMs);
+        if (self != null && Math.hypot(self.x - base.x, self.z - base.z) > 1) start = Math.atan2(self.z - base.z, self.x - base.x);
+        else start = c.rng.nextDouble() * Math.PI * 2;
+        Vec3d out = new Vec3d(Math.cos(start), 0, Math.sin(start));
+        Vec3d side = perp(out).mul(c.side);
+        double motion = c.p.motion;
+        double roll = type == ShotType.DUTCH ? 12 * c.side : 0;
+        List<Vec3d> cams = new ArrayList<Vec3d>();
+        List<Vec3d> targets = new ArrayList<Vec3d>();
+        for (long t = 0; t <= d; t += STEP) {
+            double lin = t / (double) d;
+            double u = Easing.EASE_IN_OUT.apply(lin);
+            double soft = u * 0.7 + lin * 0.3;
+            Vec3d cam, target = look;
+            switch (type) {
+                case TRUCK: {
+                    // sideways along it, looking at it: the background slides behind
+                    double span = dist * 0.75 * motion;
+                    cam = base.add(out.mul(dist)).add(side.mul(Angles.lerp(-span, span, soft))).add(0, eye - base.y, 0);
+                    break;
+                }
+                case DOLLY_IN:
+                    cam = base.add(out.mul(Angles.lerp(dist * 1.9, dist * 0.8, u))).add(0, Angles.lerp(eye - base.y + 2, eye - base.y, u), 0);
+                    break;
+                case DOLLY_OUT:
+                    cam = base.add(out.mul(Angles.lerp(dist * 0.8, dist * 1.9, u))).add(0, Angles.lerp(eye - base.y, eye - base.y + 3, u), 0);
+                    break;
+                case DRONE: {
+                    // flies in high and passes over it
+                    double alt = h + c.height(10);
+                    cam = base.add(out.mul(Angles.lerp(dist * 1.6, -dist * 0.3 * motion, soft))).add(0, alt, 0);
+                    target = base.add(0, h * 0.3, 0);
+                    break;
+                }
+                case CRANE: {
+                    double a = start + Math.toRadians(25) * c.side * soft;
+                    cam = base.add(Math.cos(a) * dist, Angles.lerp(1.2, h + c.height(6), u), Math.sin(a) * dist);
+                    target = base.add(0, Angles.lerp(h * 0.35, h * 0.6, u), 0);
+                    break;
+                }
+                case LOW_ANGLE: {
+                    double a = start + Math.toRadians(35 * motion) * c.side * soft;
+                    cam = base.add(Math.cos(a) * dist * 0.7, 0.6, Math.sin(a) * dist * 0.7);
+                    target = base.add(0, h * 0.75, 0);
+                    break;
+                }
+                case HIGH_ANGLE: {
+                    double a = start + Math.toRadians(30 * motion) * c.side * soft;
+                    cam = base.add(Math.cos(a) * dist * 0.8, h + c.height(10), Math.sin(a) * dist * 0.8);
+                    target = base.add(0, h * 0.3, 0);
+                    break;
+                }
+                case PAN: {
+                    // the camera stays, its view sweeps across
+                    cam = base.add(out.mul(dist * 1.6)).add(0, eye - base.y, 0);
+                    double span = r * 1.4 + 3;
+                    target = look.add(side.mul(Angles.lerp(-span, span, soft)));
+                    break;
+                }
+                case ESTABLISHING:
+                    cam = base.add(out.mul(Angles.lerp(dist * 2.6, dist * 2.2, u))).add(side.mul(4 * motion * soft)).add(0, h + c.height(8), 0);
+                    break;
+                default: {
+                    // around it, at about 22 degrees a second at normal speed: long and slow is a wide arc
+                    double sweep = Math.toRadians(Math.min(360, 22 * motion * d / 1000.0)) * c.side;
+                    double a = start + sweep * soft;
+                    cam = base.add(Math.cos(a) * dist, eye - base.y, Math.sin(a) * dist);
+                }
+            }
+            cams.add(cam);
+            targets.add(target);
+        }
+        bake(c, cams, targets, roll);
     }
 
     private void buildDrone(Context c) {

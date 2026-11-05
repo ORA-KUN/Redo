@@ -55,7 +55,14 @@ Types de plans : plan large d'ouverture, survol drone, travelling avant, travell
 Le champ en bas de l'éditeur accepte une demande en français ou en anglais, puis **Générer** :
 
 - sans configuration, Redo comprend les demandes simples par mots-clés (« orbite autour de Steve pendant le combat », « drone shot of the base », « bande-annonce nerveuse de 30 s ») ;
-- avec une clé d'API Claude dans `config/redo.json` (`"claudeApiKey"`), la demande est envoyée à Claude, qui comprend des demandes plus libres. Seul le texte de la demande et un résumé de la partie (joueurs, moments, durée) sont envoyés.
+- avec une clé d'API Claude dans `config/redo.json` (`"claudeApiKey"`), la demande est envoyée à Claude, qui comprend des demandes plus libres. Seul le texte de la demande, un résumé de la partie (joueurs, moments, durée) et la liste des éléments du décor sont envoyés.
+
+Redo lit aussi le décor autour du joueur enregistré (72 blocs autour de lui, au moment où se trouve la tête de lecture) : arbres (avec leur essence), bâtiments, tours, murs, monuments, fontaines, plans d'eau, lave, portails et blocs remarquables (balise, cloche, table d'enchantement…), avec leur taille et leur position par rapport au centre du lieu (le milieu de ce qui est construit, la place d'un hub par exemple). On peut donc demander un plan sur un élément du décor :
+
+- « Fais un traveling long et lent autour de l'arbre présent au centre du hub » : orbite de 14 s, lente, autour de l'arbre le plus proche du centre ;
+- « contre-plongée sur la plus grande tour », « drone au-dessus de la fontaine au nord », « survol du hub », « travelling latéral le long du mur ».
+
+« long » donne 14 s, « très long » 20 s, « court » 3 s ; « lent » et « très lent » ralentissent le mouvement de la caméra. Le plan filme le décor au moment où se trouve la tête de lecture et démarre du côté où se tenait le joueur.
 
 ### Exporter
 

@@ -19,6 +19,8 @@ public final class ShotParams {
     /** +1 or -1: orbit direction, side of a lateral travelling... 0 = random. */
     public int side;
     public double fov = Double.NaN;
+    /** A part of the scenery to film (a tree, a building...) instead of a player, or null. */
+    public Landmark place;
 
     public ShotParams copy() {
         ShotParams p = new ShotParams();
@@ -32,6 +34,7 @@ public final class ShotParams {
         p.motion = motion;
         p.side = side;
         p.fov = fov;
+        p.place = place;
         return p;
     }
 }

@@ -5,8 +5,10 @@ import fr.orakun.redo.core.math.Vec3d;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
@@ -41,5 +43,28 @@ final class FabricWorldQuery implements WorldQuery {
     public boolean isLoaded(double x, double z) {
         ClientLevel l = level();
         return l != null && l.hasChunk(((int) Math.floor(x)) >> 4, ((int) Math.floor(z)) >> 4);
+    }
+
+    @Override
+    public String blockName(int x, int y, int z) {
+        ClientLevel l = level();
+        if (l == null || !l.hasChunk(x >> 4, z >> 4)) return null;
+        pos.set(x, y, z);
+        BlockState s = l.getBlockState(pos);
+        if (s.isAir()) return "minecraft:air";
+        return BuiltInRegistries.BLOCK.getKey(s.getBlock()).toString();
+    }
+
+    @Override
+    public int surfaceY(int x, int z) {
+        ClientLevel l = level();
+        if (l == null || !l.hasChunk(x >> 4, z >> 4)) return Integer.MIN_VALUE;
+        return l.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1;
+    }
+
+    @Override
+    public int minY() {
+        // below the world, blocks read as air: the scan stops at its own depth
+        return -4096;
     }
 }
