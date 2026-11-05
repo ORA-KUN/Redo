@@ -23,6 +23,8 @@ loom {
         "client" {
             property("mixin.debug", "true")
             arg("--tweakClass", "org.spongepowered.asm.launch.MixinTweaker")
+            // CI in-game test (see LegacyE2E.java): REDO_E2E=1 ./gradlew runClient
+            if (System.getenv("REDO_E2E") != null) property("redo.e2e", "true")
         }
     }
     runConfigs {

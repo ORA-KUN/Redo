@@ -176,6 +176,7 @@ public final class LegacyClient {
 
     /** Start of a frame, before the timer. */
     public static void frameStart() {
+        if (LegacyE2E.ENABLED && busy == 0) LegacyE2E.frame();
         if (busy > 0) return;
         LegacyReplay r = replay();
         if (r == null) return;
