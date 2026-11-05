@@ -144,7 +144,7 @@ tasks.register("redoProbe") {
             val proc = ProcessBuilder("javap", "-p", "-cp", cpString, cls).redirectErrorStream(true).start()
             val text = proc.inputStream.bufferedReader().readLines()
             proc.waitFor()
-            text.filter { filter == null || it.contains(" class ") || it.contains(" interface ") || it.startsWith("Error") || filter.containsMatchIn(it) }
+            text.filter { filter == null || it.contains(" class ") || it.contains(" interface ") || it.startsWith("Error") || it.contains(" " + cls + "(") || filter.containsMatchIn(it) }
                 .forEach { sb.append(it).append('\n') }
             sb.append('\n')
         }
