@@ -26,6 +26,11 @@ public final class RedoMeta implements JsonSerializable {
     public int selfEntityId = Integer.MIN_VALUE;
     public String selfUuid = "";
     public String selfName = "";
+    /**
+     * Where the recording starts for the user, in ms of the capture: the packets before it only
+     * rebuild the world. -1 in a capture with no recording running (nothing to recover).
+     */
+    public long clipStartMs;
     public final List<long[]> highlights = new ArrayList<long[]>();
     public final List<Marker> markers = new ArrayList<Marker>();
 
@@ -42,6 +47,7 @@ public final class RedoMeta implements JsonSerializable {
         m.put("startedAt", startedAt);
         m.put("durationMs", durationMs);
         m.put("packets", packetCount);
+        m.put("clipStartMs", clipStartMs);
         Map<String, Object> self = Json.obj();
         self.put("id", selfEntityId);
         self.put("uuid", selfUuid);
@@ -61,6 +67,12 @@ public final class RedoMeta implements JsonSerializable {
         return m;
     }
 
+    /** An independent copy. */
+    @SuppressWarnings("unchecked")
+    public RedoMeta copy() {
+        return fromJson((Map<String, Object>) toJson());
+    }
+
     public static RedoMeta fromJson(Map<String, Object> m) {
         RedoMeta r = new RedoMeta();
         r.format = Json.getInt(m, "format", FORMAT);
@@ -73,6 +85,7 @@ public final class RedoMeta implements JsonSerializable {
         r.startedAt = Json.getLong(m, "startedAt", 0);
         r.durationMs = Json.getLong(m, "durationMs", 0);
         r.packetCount = Json.getLong(m, "packets", 0);
+        r.clipStartMs = Json.getLong(m, "clipStartMs", 0);
         Map<String, Object> self = Json.getObj(m, "self");
         if (self != null) {
             r.selfEntityId = Json.getInt(self, "id", Integer.MIN_VALUE);

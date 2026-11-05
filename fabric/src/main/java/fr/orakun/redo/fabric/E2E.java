@@ -13,6 +13,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
+import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.Connection;
@@ -127,8 +128,12 @@ final class E2E {
                     }
                 }
                 if (mc.level != null && mc.player != null) {
-                    if (!Recorder.isRecording()) {
-                        fail("joined the server but no recording started");
+                    if (Recorder.isRecording()) {
+                        fail("a recording started without the pause menu button");
+                        return;
+                    }
+                    if (!Recorder.canRecord()) {
+                        fail("joined the server but nothing is captured");
                         return;
                     }
                     next(Step.RECORD);
@@ -139,6 +144,30 @@ final class E2E {
                 }
                 break;
             case RECORD:
+                if (ticks == 10) Compat.setScreen(new PauseScreen(true));
+                if (ticks == 20) {
+                    // the "Enregistrer" button of the pause menu starts the recording and closes the menu
+                    AbstractWidget button = null;
+                    Screen pause = Compat.screen();
+                    if (pause != null) {
+                        for (Object child : pause.children()) {
+                            if (child instanceof AbstractWidget && ((AbstractWidget) child).getMessage().getString().contains("Enregistrer")) {
+                                button = (AbstractWidget) child;
+                            }
+                        }
+                    }
+                    if (button == null) {
+                        fail("no record button in the pause menu: " + joinState());
+                        return;
+                    }
+                    Recorder.toggleTake();
+                    pause.onClose();
+                    if (!Recorder.isRecording()) {
+                        fail("the record button did not start a recording");
+                        return;
+                    }
+                    log("recording started from the pause menu");
+                }
                 if (mc.player != null) {
                     // turn around slowly so the recorded player moves
                     mc.player.setYRot(mc.player.getYRot() + 3.0F);
@@ -151,8 +180,16 @@ final class E2E {
                     Recorder.marker();
                 }
                 if (ticks == 20 * 12) Recorder.toggleHighlight();
+                if (ticks == 20 * 15) {
+                    // "Arrêter": the recording is saved, the capture goes on until we leave
+                    log("recorded " + Recorder.recordingTimeMs() + " ms");
+                    Recorder.toggleTake();
+                    if (Recorder.isRecording()) {
+                        fail("the record button did not stop the recording");
+                        return;
+                    }
+                }
                 if (ticks >= 20 * 16) {
-                    log("recorded " + (Recorder.session() == null ? -1 : Recorder.session().timeMs()) + " ms");
                     if (mc.level != null) mc.level.disconnect(Component.literal("Redo E2E"));
                     mc.disconnectWithProgressScreen();
                     next(Step.LEAVE);
@@ -164,7 +201,11 @@ final class E2E {
                     return;
                 }
                 List<File> files = RedoArchive.list(Redo.recordingsDir());
-                if (!files.isEmpty() && ticks > 20) {
+                if (files.size() > 1) {
+                    fail("leaving the server saved a second recording: " + files);
+                    return;
+                }
+                if (!files.isEmpty() && ticks > 20 * 3) {
                     recording = files.get(0);
                     log("recording saved: " + recording.getName() + " (" + recording.length() + " bytes)");
                     next(Step.OPEN);
@@ -187,8 +228,12 @@ final class E2E {
                 if (ticks == 60) {
                     RedoArchive archive = RedoArchive.open(recording);
                     log("meta: " + archive.meta.minecraftVersion + " protocol " + archive.meta.protocol + ", "
-                            + archive.meta.durationMs + " ms, " + archive.meta.packetCount + " packets, self "
-                            + archive.meta.selfName);
+                            + archive.meta.durationMs + " ms from " + archive.meta.clipStartMs + " ms, "
+                            + archive.meta.packetCount + " packets, self " + archive.meta.selfName);
+                    if (archive.meta.clipStartMs <= 0) {
+                        fail("the recording does not start where the button was pressed");
+                        return;
+                    }
                     if (archive.meta.packetCount < 10) {
                         fail("almost no packets were recorded");
                         return;

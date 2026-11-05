@@ -47,6 +47,12 @@ public final class PacketStreamWriter implements Closeable {
         }
     }
 
+    /** Writes everything so far to the file (a complete, readable prefix of the stream). */
+    public void flush() throws IOException {
+        out.flush();
+        lastFlush = System.currentTimeMillis();
+    }
+
     public long count() {
         return count;
     }

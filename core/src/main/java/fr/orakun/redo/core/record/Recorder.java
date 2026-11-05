@@ -44,6 +44,9 @@ public final class Recorder {
 
     private static volatile RecordingSession session;
     private static volatile boolean replaying;
+    private static volatile boolean takeOpen;
+    private static int takeStartMs;
+    private static long takeStartedAt;
     private static final Map<Integer, Known> known = new HashMap<Integer, Known>();
     private static final Set<Integer> seen = new HashSet<Integer>();
     private static final TrackSource.EntityState selfState = new TrackSource.EntityState();
@@ -69,58 +72,91 @@ public final class Recorder {
         return replaying;
     }
 
+    /** True while the user records (a take is running). */
     public static boolean isRecording() {
+        return isCapturing() && takeOpen;
+    }
+
+    /**
+     * True while the session is captured in the background (from the moment the client joins):
+     * the packets from the start are needed to rebuild the world when the user starts recording.
+     */
+    public static boolean isCapturing() {
         RecordingSession s = session;
         return s != null && !s.isStopped();
+    }
+
+    /** True if the user can start a recording now (in a world, no replay open). */
+    public static boolean canRecord() {
+        return !replaying && isCapturing();
     }
 
     public static RecordingSession session() {
         return session;
     }
 
+    /** Time of the current recording in ms, or 0. */
+    public static int recordingTimeMs() {
+        RecordingSession s = session;
+        return s == null || !takeOpen ? 0 : Math.max(0, s.timeMs() - takeStartMs);
+    }
+
     /**
-     * Starts a recording when the client begins to join a server (before the first packet).
-     * Does nothing if auto recording is off or a replay is open.
+     * Starts the capture when the client begins to join a server (before the first packet). The
+     * recording itself starts from the pause menu, or right away with auto recording on.
      */
     public static void start(RedoMeta meta) {
-        if (replaying || !Redo.config().autoRecord) return;
+        if (replaying) return;
         stop();
         try {
             meta.redoVersion = Redo.VERSION;
             meta.startedAt = System.currentTimeMillis();
             session = new RecordingSession(Redo.recordingsDir(), meta);
-            known.clear();
-            seen.clear();
-            selfAnnounced = false;
-            selfId = Integer.MIN_VALUE;
-            lastSelf = null;
-            lastEquipment = null;
-            tick = 0;
-            RedoLog.info("Recording started (" + meta.serverName + ")");
+            takeOpen = false;
+            RedoLog.info("Capture started (" + meta.serverName + ")");
         } catch (Exception e) {
             session = null;
-            RedoLog.error("Could not start recording", e);
-            say("Redo : impossible de démarrer l'enregistrement (" + e.getMessage() + ")");
+            RedoLog.error("Could not start the capture", e);
+            say("Redo : impossible de préparer l'enregistrement (" + e.getMessage() + ")");
+            return;
         }
+        if (Redo.config().autoRecord) beginTake();
     }
 
-    /** Raw bytes of one clientbound packet (id + payload, uncompressed). Any thread. */
-    public static void packet(int phase, byte[] data) {
+    /** The user starts recording (pause menu button). */
+    public static void beginTake() {
         RecordingSession s = session;
-        if (s != null && !s.isStopped()) s.packet(phase, data);
+        if (replaying || s == null || s.isStopped() || takeOpen) return;
+        takeStartMs = s.timeMs();
+        takeStartedAt = System.currentTimeMillis();
+        s.beginTake(takeStartMs);
+        known.clear();
+        seen.clear();
+        selfAnnounced = false;
+        selfId = Integer.MIN_VALUE;
+        lastSelf = null;
+        lastEquipment = null;
+        tick = 0;
+        takeOpen = true;
+        RedoLog.info("Recording started (" + s.meta.serverName + ")");
+        say("Redo : enregistrement lancé");
     }
 
-    /** Ends the recording (on disconnect) and saves it in the background. */
-    public static void stop() {
+    /** The user stops recording: the recording is saved in the background, the capture goes on. */
+    public static void endTake() {
         final RecordingSession s = session;
-        session = null;
-        if (s == null || s.isStopped()) return;
-        int seconds = s.timeMs() / 1000;
-        boolean keep = seconds >= 5 || s.wasUsed();
-        String base = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(new Date(s.meta.startedAt))
+        if (s == null || !takeOpen) return;
+        takeOpen = false;
+        int seconds = (s.timeMs() - takeStartMs) / 1000;
+        if (seconds < 3 && !s.wasUsed()) {
+            say("Redo : enregistrement trop court, pas gardé");
+            s.beginTake(-1);
+            return;
+        }
+        String base = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(new Date(takeStartedAt))
                 + (s.meta.serverName.isEmpty() ? "" : "_" + s.meta.serverName);
-        if (keep) say("Redo : sauvegarde de l'enregistrement…");
-        s.stop(keep, base, new RecordingSession.Done() {
+        say("Redo : sauvegarde de l'enregistrement…");
+        s.saveTake(base, new RecordingSession.Done() {
             @Override
             public void finished(File archive, Exception error) {
                 if (error != null) say("Redo : l'enregistrement n'a pas pu être sauvegardé (" + error.getMessage() + ")");
@@ -129,16 +165,45 @@ public final class Recorder {
         });
     }
 
+    /** Text of the pause menu button. */
+    public static String buttonLabel() {
+        if (!isRecording()) return "● Enregistrer";
+        int t = recordingTimeMs() / 1000;
+        return String.format("■ Arrêter (%d:%02d)", t / 60, t % 60);
+    }
+
+    /** Pause menu button: starts or stops recording. */
+    public static void toggleTake() {
+        if (isRecording()) endTake();
+        else beginTake();
+    }
+
+    /** Raw bytes of one clientbound packet (id + payload, uncompressed). Any thread. */
+    public static void packet(int phase, byte[] data) {
+        RecordingSession s = session;
+        if (s != null && !s.isStopped()) s.packet(phase, data);
+    }
+
+    /** Leaving the world: a running recording is saved, the capture is deleted. */
+    public static void stop() {
+        final RecordingSession s = session;
+        if (s == null) return;
+        if (takeOpen) endTake();
+        session = null;
+        takeOpen = false;
+        if (!s.isStopped()) s.stop(false, "", null);
+    }
+
     /** Opens or closes a "passage à garder". */
     public static void toggleHighlight() {
         RecordingSession s = session;
-        if (s == null) return;
+        if (s == null || !takeOpen) return;
         say(s.toggleHighlight() ? "Redo : début du passage à garder" : "Redo : fin du passage à garder");
     }
 
     public static void marker() {
         RecordingSession s = session;
-        if (s == null) return;
+        if (s == null || !takeOpen) return;
         s.marker("Repère");
         say("Redo : repère ajouté");
     }
@@ -146,7 +211,7 @@ public final class Recorder {
     /** A block changed in the world (from the server). Used to spot building. */
     public static void blockChanged(int x, int y, int z, boolean wasAir, boolean isAir) {
         RecordingSession s = session;
-        if (s == null || wasAir == isAir) return;
+        if (s == null || !takeOpen || wasAir == isAir) return;
         int actor = nearestPlayer(x + 0.5, y + 0.5, z + 0.5, 6);
         s.event(new GameEvent(isAir ? GameEvent.Type.BLOCK_BREAK : GameEvent.Type.BLOCK_PLACE, s.timeMs(), actor,
                 GameEvent.NONE, x + 0.5f, y + 0.5f, z + 0.5f, ""));
@@ -155,7 +220,7 @@ public final class Recorder {
     /** A chat or system message was shown. */
     public static void chat(String text) {
         RecordingSession s = session;
-        if (s == null || text == null || text.isEmpty()) return;
+        if (s == null || !takeOpen || text == null || text.isEmpty()) return;
         s.event(new GameEvent(GameEvent.Type.CHAT, s.timeMs(), GameEvent.NONE, GameEvent.NONE, 0, 0, 0,
                 text.length() > 200 ? text.substring(0, 200) : text));
     }
@@ -163,7 +228,7 @@ public final class Recorder {
     /** Called once per client tick. */
     public static void tick(TrackSource src) {
         RecordingSession s = session;
-        if (s == null || s.isStopped() || !src.inWorld()) return;
+        if (s == null || !takeOpen || s.isStopped() || !src.inWorld()) return;
         tick++;
         int t = s.timeMs();
         selfState.reset();

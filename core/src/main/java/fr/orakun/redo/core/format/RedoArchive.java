@@ -220,7 +220,7 @@ public final class RedoArchive {
             if (!t.isDirectory() || !t.getName().startsWith(".tmp-")) continue;
             try {
                 File packets = new File(t, PACKETS);
-                if (packets.isFile() && packets.length() > 1024) {
+                if (packets.isFile() && packets.length() > 1024 && recordingRunning(t)) {
                     out.add(pack(t, dir, t.getName().substring(5) + " (récupéré)"));
                 }
                 deleteRecursively(t);
@@ -229,6 +229,24 @@ public final class RedoArchive {
             }
         }
         return out;
+    }
+
+    /** False for a background capture left by a crash while the user was not recording. */
+    private static boolean recordingRunning(File tempDir) {
+        File f = new File(tempDir, META);
+        if (!f.isFile()) return true;
+        try {
+            InputStream in = new FileInputStream(f);
+            try {
+                java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+                copy(in, out);
+                return RedoMeta.fromJson(Json.parseObject(new String(out.toByteArray(), "UTF-8"))).clipStartMs >= 0;
+            } finally {
+                in.close();
+            }
+        } catch (Exception e) {
+            return true;
+        }
     }
 
     /** Recordings in a folder, newest first. */

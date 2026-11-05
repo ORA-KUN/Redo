@@ -376,7 +376,7 @@ public final class RedoClient {
         return 0;
     }
 
-    /** A client connection is about to log in: starts a recording. */
+    /** A client connection is about to log in: starts the capture (the recording starts from the pause menu). */
     public static void connectionStarting(Connection c, ServerData server) {
         if (((RedoConnection) c).redo$isReplay() || replayActive()) return;
         RedoMeta m = new RedoMeta();
@@ -416,7 +416,7 @@ public final class RedoClient {
 
     /** Raw bytes of a packet read from the network (any thread). */
     public static void networkPacket(ProtocolInfo<?> info, ByteBuf in) {
-        if (info == null || info.flow() != PacketFlow.CLIENTBOUND || !Recorder.isRecording()) return;
+        if (info == null || info.flow() != PacketFlow.CLIENTBOUND || !Recorder.isCapturing()) return;
         int phase = phase(info.id());
         int n = in.readableBytes();
         if (phase == 0 || n <= 0) return;
@@ -427,7 +427,7 @@ public final class RedoClient {
 
     /** A packet received by an in-memory (singleplayer) connection: encoded to be recorded. */
     public static void memoryPacket(Connection c, Packet<?> packet) {
-        if (c != recorded || !c.isMemoryConnection() || !Recorder.isRecording()) return;
+        if (c != recorded || !c.isMemoryConnection() || !Recorder.isCapturing()) return;
         ProtocolInfo<?> info = ((RedoConnection) c).redo$inbound();
         if (info == null) return;
         int phase = phase(info.id());

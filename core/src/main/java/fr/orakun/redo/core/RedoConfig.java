@@ -14,10 +14,13 @@ import java.util.Map;
 
 /** User settings, stored in config/redo.json. */
 public final class RedoConfig {
-    private static final int VERSION = 1;
+    private static final int VERSION = 2;
 
-    /** Record every multiplayer session from the moment you join. */
-    public boolean autoRecord = true;
+    /**
+     * Start recording as soon as you join a world. Off by default: a recording starts and stops
+     * with the button of the pause menu.
+     */
+    public boolean autoRecord = false;
     /** Keep recordings without asking when leaving a server. */
     public boolean autoSave = true;
     public int keyHighlight = Keys.F9;
@@ -55,7 +58,8 @@ public final class RedoConfig {
             }
             Map<String, Object> m = Json.parseObject(new String(data, "UTF-8"));
             int version = Json.getInt(m, "configVersion", 1);
-            c.autoRecord = Json.getBool(m, "autoRecord", c.autoRecord);
+            // version 1 recorded every session: recordings now start from the pause menu
+            if (version >= 2) c.autoRecord = Json.getBool(m, "autoRecord", c.autoRecord);
             c.autoSave = Json.getBool(m, "autoSave", c.autoSave);
             c.keyHighlight = Json.getInt(m, "keyHighlight", c.keyHighlight);
             c.keyMarker = Json.getInt(m, "keyMarker", c.keyMarker);

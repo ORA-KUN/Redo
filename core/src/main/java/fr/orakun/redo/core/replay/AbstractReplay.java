@@ -80,12 +80,14 @@ public abstract class AbstractReplay implements ReplayBackend {
      * versions): before the first packet of the game, there is no world to show.
      */
     private long findStart() throws IOException {
+        // a recording started from the pause menu opens where the user started it
+        long clip = Math.max(0, Math.min(archive.meta.clipStartMs, durationMs()));
         PacketStreamReader r = archive.openPackets();
         try {
             for (PacketRecord p = r.next(); p != null; p = r.next()) {
-                if (p.phase == PacketRecord.PHASE_PLAY) return Math.min(p.timeMs, durationMs());
+                if (p.phase == PacketRecord.PHASE_PLAY) return Math.max(clip, Math.min(p.timeMs, durationMs()));
             }
-            return 0;
+            return clip;
         } finally {
             r.close();
         }

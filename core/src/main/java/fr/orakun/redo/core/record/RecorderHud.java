@@ -15,8 +15,8 @@ public final class RecorderHud {
         String msg = Recorder.recentMessage();
         RecordingSession s = Recorder.session();
         int y = 4;
-        if (s != null && !s.isStopped() && Redo.config().showRecordingIndicator) {
-            int t = s.timeMs() / 1000;
+        if (s != null && Recorder.isRecording() && Redo.config().showRecordingIndicator) {
+            int t = Recorder.recordingTimeMs() / 1000;
             String time = String.format("%d:%02d", t / 60, t % 60);
             boolean blink = (System.currentTimeMillis() / 600) % 2 == 0;
             String label = "REC " + time;

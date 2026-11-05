@@ -355,7 +355,7 @@ public final class LegacyClient {
     }
 
     public static void renderHud() {
-        if (replayActive() || !Recorder.isRecording()) return;
+        if (replayActive()) return;
         if (Minecraft.getMinecraft().gameSettings.hideGUI) return;
         RecorderHud.render(new LegacyGfx());
     }
@@ -427,7 +427,7 @@ public final class LegacyClient {
 
     /** Raw bytes of a packet read from the network, before decoding (netty thread). */
     public static void networkPacket(EnumPacketDirection direction, ChannelHandlerContext ctx, ByteBuf in) {
-        if (direction != EnumPacketDirection.CLIENTBOUND || !Recorder.isRecording()) return;
+        if (direction != EnumPacketDirection.CLIENTBOUND || !Recorder.isCapturing()) return;
         if (ctx.channel().attr(NetworkManager.attrKeyConnectionState).get() != EnumConnectionState.PLAY) return;
         int n = in.readableBytes();
         if (n <= 0) return;
@@ -438,7 +438,7 @@ public final class LegacyClient {
 
     /** A packet received by the singleplayer connection: encoded to be recorded. */
     public static void memoryPacket(NetworkManager nm, Packet packet) {
-        if (nm != recorded || !nm.isLocalChannel() || !Recorder.isRecording()) return;
+        if (nm != recorded || !nm.isLocalChannel() || !Recorder.isCapturing()) return;
         ByteBuf buf = Unpooled.buffer(256);
         try {
             Integer id = EnumConnectionState.PLAY.getPacketId(EnumPacketDirection.CLIENTBOUND, packet);

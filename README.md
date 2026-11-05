@@ -27,7 +27,9 @@ Un enregistrement se relit avec la version de Minecraft qui l'a fait (le format 
 
 ### Enregistrer
 
-L'enregistrement démarre tout seul quand tu rejoins un serveur ou un monde solo, et s'arrête quand tu quittes. Un petit point rouge en haut de l'écran indique qu'il tourne.
+Fais **Échap** en jeu : le bouton **● Enregistrer** en haut à droite du menu lance l'enregistrement et te ramène en jeu. Le même bouton (**■ Arrêter**) l'arrête et le sauvegarde ; tu peux en refaire autant que tu veux sur le même serveur. Quitter le serveur pendant un enregistrement le sauvegarde aussi. Un petit point rouge en haut de l'écran indique qu'il tourne.
+
+Pour rebâtir le monde, Redo garde en arrière-plan ce que le serveur envoie depuis ta connexion (dans un dossier temporaire, effacé quand tu quittes si tu n'as rien enregistré). L'enregistrement s'ouvre ensuite pile à l'endroit où tu as cliqué. Si tu préfères que tout soit enregistré dès la connexion, active « Enregistrer automatiquement » dans les réglages.
 
 - **F9** : début / fin d'un moment fort (Redo le mettra en avant dans la bande-annonce).
 - **M** : pose un marqueur sur la timeline.
@@ -61,7 +63,7 @@ Le champ en bas de l'éditeur accepte une demande en français ou en anglais, pu
 
 ## Réglages
 
-`config/redo.json` : enregistrement automatique, sauvegarde automatique, touches (codes GLFW), dossiers des enregistrements et des vidéos, chemin de ffmpeg, clé et modèle Claude, vitesse de la caméra libre, affichage du point rouge.
+`config/redo.json` : enregistrement automatique (`autoRecord`, désactivé par défaut), taille des écrans Redo (`uiScale`, 0 = automatique, sinon nombre de pixels de l'écran par pixel d'interface), sauvegarde automatique, touches (codes GLFW), dossiers des enregistrements et des vidéos, chemin de ffmpeg, clé et modèle Claude, vitesse de la caméra libre, affichage du point rouge.
 
 ## Limites connues
 
