@@ -1,6 +1,10 @@
 # One class per line (javap -p). "Class :: regex" keeps only matching members (constructors always kept).
 # "grep <regex>" lists the class names matching the regex.
 # "code Class :: regex" prints the bytecode of the methods whose declaration matches the regex.
+# Round 6: keyboard keys in 26.3
+com.mojang.blaze3d.platform.InputConstants$Type
+com.mojang.blaze3d.platform.InputConstants$Key
+grep ^com/mojang/blaze3d/platform/InputConstants
 # Round 5: how the client handles packets that arrive on its own thread (replay connection)
 grep PacketProcessor
 net.minecraft.network.PacketProcessor

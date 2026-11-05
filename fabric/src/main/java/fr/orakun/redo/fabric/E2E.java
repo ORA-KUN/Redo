@@ -19,7 +19,6 @@ import net.minecraft.network.protocol.PacketFlow;
 
 import java.io.File;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.List;
 
@@ -41,6 +40,7 @@ final class E2E {
     private static long startedAt;
     private static long lastTickAt = -1;
     private static long seekStartedAt;
+    private static long seekTo;
     private static File recording;
 
     private E2E() {
@@ -207,10 +207,6 @@ final class E2E {
                 }
                 boolean editor = Compat.screen() instanceof RedoScreen && ((RedoScreen) Compat.screen()).view instanceof EditorView;
                 if (ticks % 100 == 0) log("waiting for the editor: " + state(c));
-                if (ticks == 20 * 30 && mc.level == null) {
-                    // test of a hypothesis: packets stuck in the game's packet processor
-                    log("world still not loaded, " + processorState(true));
-                }
                 if (editor && mc.level != null && mc.player != null && !c.replay.isSeeking() && ticks > 20 * 3) {
                     EditorSession s = c.session();
                     log("replay world ready: player at " + (int) mc.player.getX() + " " + (int) mc.player.getY() + " "
@@ -250,13 +246,16 @@ final class E2E {
                 if (ticks == 1) {
                     r.setCamera(null);
                     c.session().setMode(EditorSession.Mode.FREE_CAMERA);
-                    r.seek(1000);
+                    // one second after the world appears (the recording starts during the login)
+                    seekTo = Math.min(r.startMs() + 1000, r.durationMs());
+                    log("jumping back to " + seekTo + " ms (world from " + r.startMs() + " ms)");
+                    r.seek(seekTo);
                     seekStartedAt = System.currentTimeMillis();
                 }
                 if (ticks > 5 && !r.isSeeking() && mc.level != null && mc.player != null && Compat.screen() instanceof RedoScreen
                         && ((RedoScreen) Compat.screen()).view instanceof EditorView && ticks > 40) {
                     log("jumped back to " + (long) r.timeMs() + " ms in " + (System.currentTimeMillis() - seekStartedAt) + " ms");
-                    if (Math.abs(r.timeMs() - 1000) > 200) {
+                    if (Math.abs(r.timeMs() - seekTo) > 200) {
                         fail("seek landed at " + r.timeMs());
                         return;
                     }
@@ -339,14 +338,11 @@ final class E2E {
             s += ", time " + (long) c.replay.timeMs() + " ms, seeking " + c.replay.isSeeking() + ", paused " + c.replay.isPaused();
             if (c.replay instanceof FabricReplay) s += ", " + ((FabricReplay) c.replay).debugState();
         }
-        return s + ", " + processorState(false);
+        return s + ", " + processorState();
     }
 
-    /**
-     * Test only: how many packets wait in the game's packet processor, found by reflection (the
-     * test runs with readable names). With {@code run}, they are handled right away.
-     */
-    private static String processorState(boolean run) {
+    /** Test only: how many packets wait in the game's packet processor (found by reflection). */
+    private static String processorState() {
         Minecraft mc = Minecraft.getInstance();
         try {
             for (Class<?> type = mc.getClass(); type != null; type = type.getSuperclass()) {
@@ -361,13 +357,7 @@ final class E2E {
                             queued = ((Collection<?>) q.get(p)).size();
                         }
                     }
-                    String s = "packet processor: " + queued + " queued";
-                    if (run && queued > 0) {
-                        Method m = p.getClass().getMethod("processQueuedPackets");
-                        m.invoke(p);
-                        s += ", handled by the test";
-                    }
-                    return s;
+                    return "packet processor: " + queued + " queued";
                 }
             }
             return "no packet processor";

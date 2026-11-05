@@ -89,12 +89,24 @@ jobs:
     name: Redo ${{ matrix.mc }} in-game test
     runs-on: ubuntu-24.04
     timeout-minutes: 40
+    # 26.x is still being ported: its test runs but does not fail the build yet
+    continue-on-error: ${{ startsWith(matrix.mc, '26.') }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - loader: fabric
             mc: "1.21.11"
+            java: |
+              21
+              25
+          - loader: fabric
+            mc: "26.1"
+            java: |
+              21
+              25
+          - loader: fabric
+            mc: "26.2"
             java: |
               21
               25

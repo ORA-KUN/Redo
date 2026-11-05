@@ -32,6 +32,8 @@ public abstract class AbstractReplay implements ReplayBackend {
     private CameraState camera;
     private boolean exporting;
     private boolean failed;
+    /** Time of the first packet of the game itself (the world exists from there on). */
+    private long startMs;
     /** Interpolation shown while frozen (paused or seeking), so a paused frame is exact. */
     private float pausedPartial = 1;
 
@@ -65,11 +67,33 @@ public abstract class AbstractReplay implements ReplayBackend {
     /** Opens the packet stream and the world. Seeks a little so the world is loaded. */
     public void start() throws Exception {
         Recorder.setReplaying(true);
+        startMs = findStart();
         reader = archive.openPackets();
         next = reader.next();
         tickTime = 0;
         openWorld();
-        seekTarget = Math.min(1000, durationMs());
+        seekTarget = Math.min(startMs + 1000, durationMs());
+    }
+
+    /**
+     * The recording begins while the client is still logging in (and configuring, on recent
+     * versions): before the first packet of the game, there is no world to show.
+     */
+    private long findStart() throws IOException {
+        PacketStreamReader r = archive.openPackets();
+        try {
+            for (PacketRecord p = r.next(); p != null; p = r.next()) {
+                if (p.phase == PacketRecord.PHASE_PLAY) return Math.min(p.timeMs, durationMs());
+            }
+            return 0;
+        } finally {
+            r.close();
+        }
+    }
+
+    /** The earliest replay time that shows a world; seeks before it land on it. */
+    public long startMs() {
+        return startMs;
     }
 
     /** Releases the packet stream (the platform has already left the world). */
@@ -209,7 +233,7 @@ public abstract class AbstractReplay implements ReplayBackend {
 
     @Override
     public void seek(long t) {
-        t = Math.max(0, Math.min(t, durationMs()));
+        t = Math.max(startMs, Math.min(t, durationMs()));
         if (seekTarget >= 0 && t >= seekTarget) {
             seekTarget = t;
             return;

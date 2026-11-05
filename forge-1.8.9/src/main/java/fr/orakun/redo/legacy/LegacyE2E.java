@@ -38,6 +38,7 @@ final class LegacyE2E {
     private static long startedAt;
     private static long lastTickAt = -1;
     private static long seekStartedAt;
+    private static long seekTo;
     private static File recording;
 
     private LegacyE2E() {
@@ -239,13 +240,16 @@ final class LegacyE2E {
                 if (ticks == 1) {
                     r.setCamera(null);
                     c.session().setMode(EditorSession.Mode.FREE_CAMERA);
-                    r.seek(1000);
+                    // one second after the world appears (the recording starts during the login)
+                    seekTo = Math.min(r.startMs() + 1000, r.durationMs());
+                    log("jumping back to " + seekTo + " ms (world from " + r.startMs() + " ms)");
+                    r.seek(seekTo);
                     seekStartedAt = System.currentTimeMillis();
                 }
                 if (ticks > 40 && !r.isSeeking() && mc.theWorld != null && mc.thePlayer != null && mc.currentScreen instanceof RedoGuiScreen
                         && ((RedoGuiScreen) mc.currentScreen).view instanceof EditorView) {
                     log("jumped back to " + (long) r.timeMs() + " ms in " + (System.currentTimeMillis() - seekStartedAt) + " ms");
-                    if (Math.abs(r.timeMs() - 1000) > 200) {
+                    if (Math.abs(r.timeMs() - seekTo) > 200) {
                         fail("seek landed at " + r.timeMs());
                         return;
                     }

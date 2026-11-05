@@ -26,7 +26,7 @@ final class FabricEditorHost implements EditorHost {
 
     static boolean down(KeyMapping k) {
         InputConstants.Key key = ((KeyMappingAccessor) k).redo$key();
-        if (key == null || key.getType() != InputConstants.Type.KEYSYM || key.getValue() < 0) return false;
+        if (key == null || !Compat.isKeyboard(key) || key.getValue() < 0) return false;
         return Compat.keyDown(key.getValue());
     }
 
