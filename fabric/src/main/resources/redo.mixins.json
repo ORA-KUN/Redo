@@ -12,6 +12,7 @@
     "GameRendererMixin",
     "GuiMixin",
     "KeyMappingAccessor",
+    "LevelRendererMixin",
     "LocalPlayerMixin",
     "MinecraftMixin",
     "PacketDecoderMixin",

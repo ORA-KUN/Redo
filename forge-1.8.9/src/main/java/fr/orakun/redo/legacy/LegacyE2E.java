@@ -45,6 +45,10 @@ final class LegacyE2E {
     private static long seekStartedAt;
     /** Ticks of the jump back during which another screen replaced the editor. */
     private static int editorLostTicks;
+    /** Frames during the jump back that kept the last image, and how much the picture moved. */
+    private static int heldFrames;
+    private static BufferedImage beforeJump;
+    private static int jumpChange = -1;
     private static String editorLostTo = "";
     private static long seekTo;
     private static File recording;
@@ -107,6 +111,21 @@ final class LegacyE2E {
         }
         log("editor top bar found at " + found + " of " + xs.length + " points");
         return found >= 2;
+    }
+
+    /** Mean difference of the middle of two screenshots (0 = same picture), or -1. */
+    private static int change(BufferedImage a, BufferedImage b) {
+        if (a == null || b == null || a.getWidth() != b.getWidth() || a.getHeight() != b.getHeight()) return -1;
+        long sum = 0;
+        int n = 0;
+        for (int y = a.getHeight() * 3 / 10; y < a.getHeight() * 7 / 10; y += 6) {
+            for (int x = a.getWidth() * 3 / 10; x < a.getWidth() * 7 / 10; x += 6) {
+                int p = a.getRGB(x, y), q = b.getRGB(x, y);
+                for (int sh = 0; sh <= 16; sh += 8) sum += Math.abs(((p >> sh) & 0xFF) - ((q >> sh) & 0xFF));
+                n += 3;
+            }
+        }
+        return n == 0 ? -1 : (int) (sum / n);
     }
 
     private static boolean close(int a, int b) {
@@ -325,20 +344,35 @@ final class LegacyE2E {
                 if (ticks == 1) {
                     r.setCamera(null);
                     c.session().setMode(EditorSession.Mode.FREE_CAMERA);
+                }
+                if (ticks == 3) {
+                    beforeJump = shot("before-jump");
                     // one second after the world appears (the recording starts during the login)
                     seekTo = Math.min(r.startMs() + 1000, r.durationMs());
                     log("jumping back to " + seekTo + " ms (world from " + r.startMs() + " ms)");
                     r.seek(seekTo);
                     seekStartedAt = System.currentTimeMillis();
                 }
+                if (ticks > 3 && r.isHoldingImage()) heldFrames++;
+                // in the middle of the jump, the picture is still the one from before it
+                if (ticks == 8 && r.isHoldingImage()) jumpChange = change(beforeJump, shot("during-jump"));
                 // the editor stays on screen while the world is rebuilt (no loading screens)
                 if (ticks > 1 && !(mc.currentScreen instanceof RedoGuiScreen && ((RedoGuiScreen) mc.currentScreen).view instanceof EditorView)) {
                     editorLostTicks++;
                     editorLostTo = mc.currentScreen == null ? "no screen" : mc.currentScreen.getClass().getName();
                 }
-                if (ticks > 40 && !r.isSeeking() && mc.theWorld != null && mc.thePlayer != null && mc.currentScreen instanceof RedoGuiScreen
-                        && ((RedoGuiScreen) mc.currentScreen).view instanceof EditorView) {
-                    log("jumped back to " + (long) r.timeMs() + " ms in " + (System.currentTimeMillis() - seekStartedAt) + " ms");
+                if (ticks > 40 && !r.isSeeking() && !r.isHoldingImage() && mc.theWorld != null && mc.thePlayer != null
+                        && mc.currentScreen instanceof RedoGuiScreen && ((RedoGuiScreen) mc.currentScreen).view instanceof EditorView) {
+                    log("jumped back to " + (long) r.timeMs() + " ms in " + (System.currentTimeMillis() - seekStartedAt) + " ms; last image kept for "
+                            + heldFrames + " frames, picture change in the middle of the jump " + jumpChange + "/255");
+                    if (heldFrames == 0) {
+                        fail("the last image was not kept during the jump back (the world was seen being rebuilt)");
+                        return;
+                    }
+                    if (jumpChange > 6) {
+                        fail("the picture changed during the jump back (" + jumpChange + "/255)");
+                        return;
+                    }
                     if (editorLostTicks > 0) {
                         fail("the editor left the screen during the jump back (" + editorLostTicks + " ticks, " + editorLostTo + ")");
                         return;

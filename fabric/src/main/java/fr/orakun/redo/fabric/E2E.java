@@ -72,15 +72,34 @@ final class E2E {
     /** Result of the check of the editor screenshot: 0 pending, 1 drawn, 2 not drawn. */
     private static volatile int editorCheck;
 
+    /** The middle of the screenshots taken before and during the jump back, to compare them. */
+    private static volatile int[] beforeJump, duringJump;
+    private static int heldTicks;
+
     private static void shot(String name) {
-        shot(name, false);
+        shot(name, false, 0);
     }
 
-    private static void shot(String name, final boolean checkEditor) {
+    private static void shot(String name, boolean checkEditor) {
+        shot(name, checkEditor, 0);
+    }
+
+    /** {@code sample}: 1 keeps the middle of the picture as "before the jump", 2 as "during". */
+    private static void shot(String name, final boolean checkEditor, final int sample) {
         Minecraft mc = Minecraft.getInstance();
         String file = String.format("e2e-%02d-%s.png", ++shots, name);
         Screenshot.takeScreenshot(Compat.mainTarget(), image -> {
             try {
+                if (sample > 0) {
+                    int w = image.getWidth(), h = image.getHeight();
+                    int[] px = new int[(w * 4 / 10 / 6 + 1) * (h * 4 / 10 / 6 + 1)];
+                    int i = 0;
+                    for (int y = h * 3 / 10; y < h * 7 / 10 && i < px.length; y += 6) {
+                        for (int x = w * 3 / 10; x < w * 7 / 10 && i < px.length; x += 6) px[i++] = image.getPixel(x, y);
+                    }
+                    if (sample == 1) beforeJump = px;
+                    else duringJump = px;
+                }
                 if (checkEditor) {
                     // the editor's top bar, at the top left: an editor open but drawn nowhere fails
                     int px = UiScale.pixels(image.getWidth(), image.getHeight());
@@ -113,6 +132,16 @@ final class E2E {
                 image.close();
             }
         });
+    }
+
+    /** Mean difference of two picture samples (0 = same picture), or -1. */
+    private static int change(int[] a, int[] b) {
+        if (a == null || b == null || a.length != b.length || a.length == 0) return -1;
+        long sum = 0;
+        for (int i = 0; i < a.length; i++) {
+            for (int sh = 0; sh <= 16; sh += 8) sum += Math.abs(((a[i] >> sh) & 0xFF) - ((b[i] >> sh) & 0xFF));
+        }
+        return (int) (sum / (a.length * 3L));
     }
 
     private static boolean close(int a, int b) {
@@ -339,20 +368,36 @@ final class E2E {
                 if (ticks == 1) {
                     r.setCamera(null);
                     c.session().setMode(EditorSession.Mode.FREE_CAMERA);
+                }
+                if (ticks == 3) {
+                    shot("before-jump", false, 1);
                     // one second after the world appears (the recording starts during the login)
                     seekTo = Math.min(r.startMs() + 1000, r.durationMs());
                     log("jumping back to " + seekTo + " ms (world from " + r.startMs() + " ms)");
                     r.seek(seekTo);
                     seekStartedAt = System.currentTimeMillis();
                 }
+                if (ticks > 3 && r.isHoldingImage()) heldTicks++;
+                // in the middle of the jump, the picture is still the one from before it
+                if (ticks == 8 && r.isHoldingImage()) shot("during-jump", false, 2);
                 // the editor stays on screen while the world is rebuilt (no loading screens)
                 if (ticks > 1 && !(Compat.screen() instanceof RedoScreen && ((RedoScreen) Compat.screen()).view instanceof EditorView)) {
                     editorLostTicks++;
                     editorLostTo = Compat.screen() == null ? "no screen" : Compat.screen().getClass().getName();
                 }
-                if (ticks > 5 && !r.isSeeking() && mc.level != null && mc.player != null && Compat.screen() instanceof RedoScreen
-                        && ((RedoScreen) Compat.screen()).view instanceof EditorView && ticks > 40) {
-                    log("jumped back to " + (long) r.timeMs() + " ms in " + (System.currentTimeMillis() - seekStartedAt) + " ms");
+                if (ticks > 40 && !r.isSeeking() && !r.isHoldingImage() && mc.level != null && mc.player != null
+                        && Compat.screen() instanceof RedoScreen && ((RedoScreen) Compat.screen()).view instanceof EditorView) {
+                    int jumpChange = change(beforeJump, duringJump);
+                    log("jumped back to " + (long) r.timeMs() + " ms in " + (System.currentTimeMillis() - seekStartedAt) + " ms; last image kept for "
+                            + heldTicks + " ticks, picture change in the middle of the jump " + jumpChange + "/255");
+                    if (heldTicks == 0) {
+                        fail("the last image was not kept during the jump back (the world was seen being rebuilt)");
+                        return;
+                    }
+                    if (jumpChange > 6) {
+                        fail("the picture changed during the jump back (" + jumpChange + "/255)");
+                        return;
+                    }
                     if (editorLostTicks > 0) {
                         fail("the editor left the screen during the jump back (" + editorLostTicks + " ticks, " + editorLostTo + ")");
                         return;

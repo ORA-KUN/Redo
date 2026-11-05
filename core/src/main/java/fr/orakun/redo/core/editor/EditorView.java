@@ -969,7 +969,12 @@ public final class EditorView implements View {
 
     private void renderViewportOverlay(Gfx g) {
         if (s.analysing) Widget.centered(g, "Le réalisateur analyse la partie…", vpX + vpW / 2, vpY + vpH / 2, Theme.TEXT);
-        if (s.backend.isSeeking()) Widget.centered(g, "Chargement…", vpX + vpW / 2, vpY + 8, Theme.TEXT);
+        if (s.backend.isSeeking() || s.backend.isHoldingImage()) {
+            String t = "Chargement" + spinner();
+            int tw = g.textWidth("Chargement...");
+            g.fill(vpX + vpW / 2 - tw / 2 - 5, vpY + 5, vpX + vpW / 2 + tw / 2 + 5, vpY + 18, 0xB0000000);
+            g.text(t, vpX + vpW / 2 - tw / 2, vpY + 8, Theme.TEXT, false);
+        }
         String msg = s.promptBusy ? s.promptMessage + spinner() : s.promptMessage;
         if (msg != null && !msg.isEmpty()) {
             int tw = Math.min(g.textWidth(msg), vpW - 12);

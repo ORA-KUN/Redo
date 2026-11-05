@@ -138,6 +138,34 @@ public final class FabricReplay extends AbstractReplay {
         if (++fed % 512 == 0) channel.releaseOutbound();
     }
 
+    /** Frames in a row with no terrain to build, and whether some was seen, since the jump. */
+    private int quietFrames;
+    private boolean sawTerrainWork;
+
+    @Override
+    protected ImageCapture captureImage() {
+        quietFrames = 0;
+        sawTerrainWork = false;
+        return RedoClient.editorShown() && FrozenImage.request() ? ImageCapture.PENDING : ImageCapture.NONE;
+    }
+
+    @Override
+    protected boolean imageReady() {
+        return FrozenImage.ready();
+    }
+
+    @Override
+    protected boolean terrainReady() {
+        // the game finds the visible terrain over a few frames, on another thread: an empty
+        // queue only counts once it has emptied, or after a while
+        if (!FrozenImage.terrainQueueEmpty()) {
+            sawTerrainWork = true;
+            quietFrames = 0;
+            return false;
+        }
+        return sawTerrainWork || ++quietFrames >= 10;
+    }
+
     @Override
     protected void applyTiming(boolean frozen, double speed) {
         // the tick timer mixin asks RedoClient.replayTicks, which reads isFrozen() and speed()

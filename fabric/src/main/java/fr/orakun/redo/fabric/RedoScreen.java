@@ -35,6 +35,9 @@ public final class RedoScreen extends Screen {
         long now = System.nanoTime();
         double dt = (now - lastFrame) / 1_000_000.0;
         lastFrame = now;
+        // after a jump, the last image of the world stays until the new one is drawn in full
+        FabricReplay r = RedoClient.replay();
+        if (r != null && r.isHoldingImage() && view.showsWorld()) FrozenImage.draw(g);
         // Redo screens have their own size, whatever the game's interface size
         int px = pixels();
         float k = (float) (px / guiScale());

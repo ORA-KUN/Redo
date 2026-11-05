@@ -20,6 +20,12 @@ public interface ReplayBackend {
     /** True while a jump backwards is being replayed from the start. */
     boolean isSeeking();
 
+    /**
+     * True while the screen keeps the last image of the world, after a jump, until the new world is
+     * drawn in full (the world is rebuilt behind it instead of being seen filling in).
+     */
+    boolean isHoldingImage();
+
     /** Jumps to a replay time. Forward jumps are quick; backward jumps replay from the start. */
     void seek(long timeMs);
 

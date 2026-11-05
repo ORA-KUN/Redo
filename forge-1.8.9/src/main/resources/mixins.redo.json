@@ -12,6 +12,7 @@
     "MinecraftMixin",
     "NetHandlerPlayClientMixin",
     "NetworkManagerMixin",
+    "RenderGlobalAccessor",
     "TimerMixin",
     "WorldClientMixin"
   ]

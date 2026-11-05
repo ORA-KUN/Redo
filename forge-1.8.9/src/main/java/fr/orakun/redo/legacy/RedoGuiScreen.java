@@ -51,6 +51,9 @@ public final class RedoGuiScreen extends GuiScreen {
         double dt = (now - lastFrame) / 1000000.0;
         lastFrame = now;
         // Redo screens have their own size, whatever the game's interface size
+        // after a jump, the last image of the world stays until the new one is drawn in full
+        LegacyReplay r = LegacyClient.replay();
+        if (r != null && r.isHoldingImage() && view.showsWorld()) FrozenImage.draw();
         int px = pixels();
         float k = px / (float) new ScaledResolution(mc).getScaleFactor();
         int mx = Mouse.getX() / px;

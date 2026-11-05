@@ -37,6 +37,19 @@ public abstract class AbstractReplay implements ReplayBackend {
     private long startMs;
     /** Interpolation shown while frozen (paused or seeking), so a paused frame is exact. */
     private float pausedPartial = 1;
+    /** The last image of the world stays on screen while a jump replays packets (see isHoldingImage). */
+    private boolean holding;
+    private long holdSince, settledSince = -1;
+    private int settledFrames;
+    /** Longest time the image is kept once the packets are applied, if the terrain never settles. */
+    private static final long HOLD_AFTER_MS = 2500;
+    /** Longest hold in all, so a very long jump still shows that something happens. */
+    private static final long HOLD_MAX_MS = 20000;
+    /** A jump waiting for the image to be copied before it changes the world, or -1. */
+    private long deferredTarget = -1;
+    private long deferredSince;
+    /** Longest wait for that copy. */
+    private static final long IMAGE_WAIT_MS = 500;
 
     protected AbstractReplay(RedoArchive archive) {
         this.archive = archive;
@@ -61,6 +74,34 @@ public abstract class AbstractReplay implements ReplayBackend {
 
     /** Called after a jump so entities snap to where they are instead of gliding there. */
     protected void afterJump() {
+    }
+
+    /** How the platform keeps the last image of the world when a jump starts. */
+    protected enum ImageCapture {
+        /** It cannot: the jump is seen as it happens. */
+        NONE,
+        /** The image is there already (copied with every drawn world). */
+        READY,
+        /** A copy has been asked for and arrives in a frame or two: the jump waits for it. */
+        PENDING
+    }
+
+    /**
+     * Keeps the image of the world now on screen, to show it while a jump rebuilds the world. Called
+     * when a jump starts, during the editor's drawing (the world is drawn, the interface not yet).
+     */
+    protected ImageCapture captureImage() {
+        return ImageCapture.NONE;
+    }
+
+    /** True once a {@link ImageCapture#PENDING} copy has arrived. */
+    protected boolean imageReady() {
+        return true;
+    }
+
+    /** True once the world around the camera is fully drawn (no terrain left to build). */
+    protected boolean terrainReady() {
+        return true;
     }
 
     // ------------------------------------------------------------------ lifecycle
@@ -136,6 +177,17 @@ public abstract class AbstractReplay implements ReplayBackend {
 
     /** Called by the platform once per rendered frame, before the world is drawn. */
     public void frame() {
+        if (deferredTarget >= 0) {
+            if (!imageReady() && System.currentTimeMillis() - deferredSince < IMAGE_WAIT_MS) {
+                applyTiming(isFrozen(), speed);
+                return;
+            }
+            // the image is kept: the world can change behind it
+            long t = deferredTarget;
+            deferredTarget = -1;
+            seekTarget = t;
+            if (t < tickTime - TICK_MS) restart(t);
+        }
         if (seekTarget >= 0) {
             long deadline = System.nanoTime() + SEEK_BUDGET_NS;
             while (next != null && next.timeMs <= seekTarget && System.nanoTime() < deadline) {
@@ -153,7 +205,48 @@ public abstract class AbstractReplay implements ReplayBackend {
                 afterJump();
             }
         }
+        updateHold();
         applyTiming(isFrozen(), exporting ? 1 : speed);
+    }
+
+    /** Lets go of the kept image a few frames after the jump, once the terrain is drawn. */
+    private void updateHold() {
+        if (!holding) return;
+        long now = System.currentTimeMillis();
+        if (exporting || now - holdSince > HOLD_MAX_MS) {
+            holding = false;
+            return;
+        }
+        if (seekTarget >= 0) {
+            settledSince = -1;
+            settledFrames = 0;
+            return;
+        }
+        if (settledSince < 0) settledSince = now;
+        // a couple of frames for the game to see the new world and queue its terrain
+        if (++settledFrames > 3 && (terrainReady() || now - settledSince > HOLD_AFTER_MS)) holding = false;
+    }
+
+    /**
+     * Starts keeping the current image, at the start of a jump that changes what is seen. Returns
+     * true if the jump must wait for the copy of the image (see {@link #frame}).
+     */
+    private boolean hold() {
+        if (holding || exporting) return false;
+        ImageCapture c = captureImage();
+        if (c == ImageCapture.NONE) return false;
+        holding = true;
+        holdSince = System.currentTimeMillis();
+        settledSince = -1;
+        settledFrames = 0;
+        if (c != ImageCapture.PENDING) return false;
+        deferredSince = holdSince;
+        return true;
+    }
+
+    @Override
+    public boolean isHoldingImage() {
+        return holding;
     }
 
     /** Called by the platform at the start of each client tick. */
@@ -239,14 +332,23 @@ public abstract class AbstractReplay implements ReplayBackend {
     @Override
     public void seek(long t) {
         t = Math.max(startMs, Math.min(t, durationMs()));
+        if (deferredTarget >= 0) {
+            // still waiting for the image: the world has not changed yet, only the aim does
+            deferredTarget = t;
+            seekTarget = t;
+            return;
+        }
         if (seekTarget >= 0 && t >= seekTarget) {
             seekTarget = t;
+            if (t - tickTime > 4 * TICK_MS && hold()) deferredTarget = t;
             return;
         }
         long shown = (long) timeMs();
         if (t >= tickTime && seekTarget < 0) {
             if (t - shown < 1) return;
             seekTarget = t;
+            // a short step forward is applied within the next frame: nothing to hide
+            if (t - tickTime > 4 * TICK_MS && hold()) deferredTarget = t;
             return;
         }
         if (seekTarget < 0 && t >= tickTime - TICK_MS && t < tickTime) {
@@ -257,6 +359,16 @@ public abstract class AbstractReplay implements ReplayBackend {
         // backwards: replay from the start. The game may draw the open screen (the editor) while
         // the world is torn down: it sees a seek in progress and does not ask for another one.
         seekTarget = t;
+        if (restarting) return;
+        if (hold()) {
+            deferredTarget = t;
+            return;
+        }
+        restart(t);
+    }
+
+    /** Rebuilds the world from the first packet, for a jump to {@code t} behind the current time. */
+    private void restart(long t) {
         if (restarting) return;
         restarting = true;
         try {

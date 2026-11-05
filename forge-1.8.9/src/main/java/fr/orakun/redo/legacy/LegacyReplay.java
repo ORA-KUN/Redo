@@ -123,6 +123,17 @@ public final class LegacyReplay extends AbstractReplay {
     }
 
     @Override
+    protected ImageCapture captureImage() {
+        // the world is copied each frame while the editor is open (see LegacyClient.worldRendered)
+        return LegacyClient.editorShown() && FrozenImage.available() ? ImageCapture.READY : ImageCapture.NONE;
+    }
+
+    @Override
+    protected boolean terrainReady() {
+        return FrozenImage.terrainReady();
+    }
+
+    @Override
     protected void applyTiming(boolean frozen, double speed) {
         // the timer mixin asks LegacyClient.timerUpdated, which reads isFrozen() and speed()
     }

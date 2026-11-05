@@ -315,6 +315,10 @@ public final class RedoClient {
         r.lastCamera = new CameraState(x, y, z, yaw, pitch, o == null ? 0 : o.roll, lastFov);
     }
 
+    public static void levelRendererCreated(net.minecraft.client.renderer.LevelRenderer lr) {
+        FrozenImage.levelRenderer = lr;
+    }
+
     /** Called once the world is drawn (before the interface): reads the frame for an export. */
     public static void levelRendered() {
         ReplayController c = ReplayController.current();
