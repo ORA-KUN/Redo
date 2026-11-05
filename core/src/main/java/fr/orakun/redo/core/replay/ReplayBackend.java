@@ -32,11 +32,8 @@ public interface ReplayBackend {
     /** Forces the camera pose, or gives control back to the free camera with null. */
     void setCamera(CameraState camera);
 
-    /** Pose of the free camera (the spectator the user flies). */
-    CameraState freeCamera();
-
-    /** Moves the free camera. */
-    void teleportFreeCamera(CameraState camera);
+    /** Pose of the camera in the last rendered frame (where the free camera starts), or null. */
+    CameraState currentCamera();
 
     /** Block access for the director, or null if the world is not loaded yet. */
     WorldQuery world();

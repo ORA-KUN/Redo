@@ -89,6 +89,13 @@ public final class EditorSession {
     public final List<CameraState> pendingKeys = new ArrayList<CameraState>();
     public TrailerBuilder.Style trailerStyle = TrailerBuilder.Style.CINEMATIC;
 
+    /** The camera flown in {@link Mode#FREE_CAMERA}. */
+    public final FreeCamera freeCam = new FreeCamera();
+    /** Movement keys, filled by the view before {@link #frame}: forward, strafe, up, sprint. */
+    public final double[] move = new double[4];
+    /** Whether the replay runs while flying the free camera. */
+    public boolean freePlaying;
+
     public EditorSession(RedoArchive archive, EventTrack track, ReplayBackend backend) {
         this.archive = archive;
         this.track = track;
@@ -140,7 +147,13 @@ public final class EditorSession {
         if (export != null && export.isActive()) return;
 
         if (mode == Mode.FREE_CAMERA) {
-            backend.setCamera(null);
+            if (!freeCam.isPlaced()) freeCam.place(backend.currentCamera());
+            if (freeCam.isPlaced()) {
+                freeCam.update(dtMs, move, Redo.config().flySpeed);
+                backend.setCamera(freeCam.state());
+            }
+            backend.setSpeed(freeSpeed);
+            backend.setPaused(!freePlaying);
         } else if (previewShot != null) {
             driveSingle(previewShot.clip, dtMs);
         } else {
@@ -236,7 +249,10 @@ public final class EditorSession {
         if (m == Mode.FREE_CAMERA) {
             playing = false;
             previewShot = null;
-            backend.setCamera(null);
+            freePlaying = false;
+            freeSpeed = 1;
+            CameraState cur = backend.currentCamera();
+            if (cur != null) freeCam.place(cur);
             backend.setPaused(true);
             backend.setSpeed(1);
         } else if (m == Mode.FULLSCREEN) {
@@ -462,9 +478,30 @@ public final class EditorSession {
 
     // ------------------------------------------------------------------ free camera keyframes
 
+    private double freeSpeed = 1;
+
+    public double freeSpeed() {
+        return freeSpeed;
+    }
+
+    /** Replay speed while flying: one step up or down among the usual speeds. */
+    public void stepFreeSpeed(int dir) {
+        double[] steps = {0.1, 0.25, 0.5, 1, 2, 4, 8};
+        int i = 3;
+        for (int k = 0; k < steps.length; k++) if (Math.abs(steps[k] - freeSpeed) < 1e-6) i = k;
+        i = Math.max(0, Math.min(steps.length - 1, i + dir));
+        freeSpeed = steps[i];
+    }
+
+    /** Jumps the replay while flying the free camera. */
+    public void freeSeek(double deltaMs) {
+        long t = (long) Math.max(0, Math.min(backend.durationMs(), backend.timeMs() + deltaMs));
+        backend.seek(t);
+    }
+
     public void addKeyframe() {
-        CameraState cam = backend.freeCamera();
-        if (cam == null) return;
+        if (!freeCam.isPlaced()) return;
+        CameraState cam = freeCam.state();
         pendingKeys.add(cam);
         pendingKeyTimes.add(new double[]{backend.timeMs()});
         toast("Image clé " + pendingKeys.size() + " à " + Director.formatTime((long) backend.timeMs()) + ".", false);
@@ -562,7 +599,7 @@ public final class EditorSession {
     }
 
     /** Starts exporting the current sequence; the platform then renders frame by frame. */
-    public boolean startExport(int framebufferW, int framebufferH) {
+    public boolean startExport(int framebufferW, int framebufferH, boolean bottomUp) {
         if (sequence.clips.isEmpty()) {
             toast("La timeline est vide.", true);
             return false;
@@ -577,6 +614,7 @@ public final class EditorSession {
         mode = Mode.MONTAGE;
         File out = nextExportFile();
         export = new ExportJob(sequence.copy(), sequence.export.copy(), ff, out, framebufferW, framebufferH);
+        export.setBottomUp(bottomUp);
         if (!export.start()) {
             toast(export.error(), true);
             export = null;

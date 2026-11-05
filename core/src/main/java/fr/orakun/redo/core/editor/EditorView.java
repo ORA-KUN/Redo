@@ -18,10 +18,12 @@ import fr.orakun.redo.core.ui.Keys;
 import fr.orakun.redo.core.ui.Slider;
 import fr.orakun.redo.core.ui.TextField;
 import fr.orakun.redo.core.ui.Theme;
+import fr.orakun.redo.core.ui.View;
 import fr.orakun.redo.core.ui.Widget;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
@@ -29,7 +31,7 @@ import java.util.Locale;
  * The montage screen: bin of shots on the left, preview in the middle, inspector on the right,
  * prompt bar and timeline at the bottom. Platform screens forward drawing and input here.
  */
-public final class EditorView {
+public final class EditorView implements View {
     private static final String[] FILTERS = {"Tous", "Auto", "Prompt", "Manuels", "★"};
     private static final int[][] RESOLUTIONS = {{1280, 720}, {1920, 1080}, {2560, 1440}, {3840, 2160}, {1080, 1920}};
     private static final Integer[] FPS = {24, 30, 60};
@@ -60,6 +62,10 @@ public final class EditorView {
 
     // inspector widgets (rebuilt when the selection changes)
     private final List<Widget> inspector = new ArrayList<Widget>();
+    private final List<Widget> freeWidgets = new ArrayList<Widget>();
+    private EditorSession.Mode lastMode = EditorSession.Mode.MONTAGE;
+    private long modeSince;
+    private boolean lookDrag;
 
     public EditorView(EditorSession s, EditorHost host) {
         this.s = s;
@@ -103,6 +109,7 @@ public final class EditorView {
         timeline.bounds(0, tlY + 14, W, tlH - 14);
         prompt.bounds(binW + 4, promptY + 3, vpW - 70, 14);
         buildWidgets();
+        buildFreeWidgets();
         inspected = null;
     }
 
@@ -150,14 +157,12 @@ public final class EditorView {
             @Override
             public void run() {
                 s.setMode(EditorSession.Mode.FREE_CAMERA);
-                host.enterFreeCamera();
             }
         }).tip("Voler librement et placer des images clés (Tab)").bounds(tx + 58, 2, 72, 14));
         widgets.add(new Button("Plein écran", new Runnable() {
             @Override
             public void run() {
                 s.setMode(EditorSession.Mode.FULLSCREEN);
-                host.enterFullscreen();
             }
         }).tip("Lire le montage en plein écran (F)").bounds(tx + 132, 2, 64, 14));
 
@@ -535,7 +540,7 @@ public final class EditorView {
             panelWidgets.add(new Button("Lancer l'export", new Runnable() {
                 @Override
                 public void run() {
-                    if (s.startExport(host.framebufferWidth(), host.framebufferHeight())) panel = Panel.NONE;
+                    if (s.startExport(host.framebufferWidth(), host.framebufferHeight(), host.framesBottomUp())) panel = Panel.NONE;
                 }
             }).accent().bounds(x, py + ph - 24, w / 2 - 2, 16));
             panelWidgets.add(new Button("Fermer", new Runnable() {
@@ -613,8 +618,153 @@ public final class EditorView {
 
     // ------------------------------------------------------------------ rendering
 
-    public void render(Gfx g, int mx, int my) {
+    @Override
+    public void render(Gfx g, int mx, int my, double dtMs) {
+        if (s.mode == EditorSession.Mode.FREE_CAMERA && !typing()) host.movement(s.move);
+        else Arrays.fill(s.move, 0);
+        s.frame(dtMs);
+        if (s.mode != lastMode) {
+            lastMode = s.mode;
+            modeSince = System.currentTimeMillis();
+            lookDrag = false;
+        }
         layout(g);
+        if (s.export == null || s.export.state() == ExportJob.State.CANCELLED) {
+            if (s.mode == EditorSession.Mode.FREE_CAMERA) {
+                renderFreeCamera(g, mx, my);
+                return;
+            }
+            if (s.mode == EditorSession.Mode.FULLSCREEN) {
+                renderFullscreen(g);
+                return;
+            }
+        }
+        renderMontage(g, mx, my);
+    }
+
+    @Override
+    public boolean showsWorld() {
+        return true;
+    }
+
+    @Override
+    public void closed() {
+        s.save();
+    }
+
+    /** Where the world shows between the panels, in interface pixels {x, y, w, h}. */
+    public int[] viewport() {
+        return new int[]{vpX, vpY, vpW, vpH};
+    }
+
+    private void renderFullscreen(Gfx g) {
+        long since = System.currentTimeMillis() - modeSince;
+        if (since < 2500) {
+            String hint = "Plein écran : Échap pour revenir, Espace pour lecture/pause";
+            int tw = g.textWidth(hint);
+            g.fill(W / 2 - tw / 2 - 6, 8, W / 2 + tw / 2 + 6, 22, 0x99000000);
+            Widget.centered(g, hint, W / 2, 11, Theme.TEXT);
+        }
+    }
+
+    private void renderFreeCamera(Gfx g, int mx, int my) {
+        g.fill(0, 0, W, 18, 0xA0000000);
+        g.text("Caméra libre", 5, 5, Theme.ACCENT, true);
+        String info = time(s.backend.timeMs()) + " / " + time(s.backend.durationMs())
+                + "   " + (s.freePlaying ? "Lecture" : "Pause") + " x" + fmtSpeed(s.freeSpeed())
+                + "   Vol " + fmtSpeed(Redo.config().flySpeed) + " blocs/s"
+                + "   Images clés : " + s.pendingKeys.size();
+        int infoX = 5 + g.textWidth("Caméra libre") + 12;
+        int right = freeWidgets.isEmpty() ? W : freeWidgets.get(freeWidgets.size() - 1).x - 6;
+        g.text(Widget.fit(g, info, right - infoX), infoX, 5, Theme.TEXT, false);
+        for (Widget w : freeWidgets) w.render(g, mx, my);
+        // crosshair
+        int cx = W / 2, cy = H / 2;
+        g.fill(cx - 4, cy, cx + 5, cy + 1, 0x90FFFFFF);
+        g.fill(cx, cy - 4, cx + 1, cy + 5, 0x90FFFFFF);
+        String l1 = "Clic + souris : viser   Touches de déplacement : voler   Molette : vitesse de vol   Ctrl+molette : zoom   Alt+molette : inclinaison   R : objectif par défaut";
+        String l2 = "K : image clé   Entrée : créer le plan   Retour arrière : effacer les images   P : lecture/pause   ← → : 5 s   ↑ ↓ : vitesse du replay   Tab/Échap : montage";
+        g.fill(0, H - 26, W, H, 0xA0000000);
+        g.text(Widget.fit(g, l1, W - 10), 5, H - 23, Theme.TEXT_DIM, false);
+        g.text(Widget.fit(g, l2, W - 10), 5, H - 12, Theme.TEXT_DIM, false);
+        renderToasts(g);
+    }
+
+    private static String fmtSpeed(double v) {
+        if (Math.abs(v - Math.rint(v)) < 1e-6) return String.valueOf((long) Math.rint(v));
+        return String.format(Locale.ROOT, v < 1 ? "%.2f" : "%.1f", v);
+    }
+
+    private void buildFreeWidgets() {
+        freeWidgets.clear();
+        int x = W - 4;
+        x = addRight(freeWidgets, x, 2, "Montage", new Runnable() {
+            @Override
+            public void run() {
+                s.setMode(EditorSession.Mode.MONTAGE);
+            }
+        });
+        Button make = addRightButton(freeWidgets, x, 2, "Créer le plan", new Runnable() {
+            @Override
+            public void run() {
+                finishShot();
+            }
+        }, 14);
+        make.accent();
+        x = make.x - 3;
+        x = addRight(freeWidgets, x, 2, "Effacer", new Runnable() {
+            @Override
+            public void run() {
+                s.clearKeyframes();
+            }
+        });
+        addRight(freeWidgets, x, 2, "Image clé", new Runnable() {
+            @Override
+            public void run() {
+                s.addKeyframe();
+            }
+        });
+        // keep them ordered right to left so the info text stops before the leftmost one
+        java.util.Collections.sort(freeWidgets, new java.util.Comparator<Widget>() {
+            @Override
+            public int compare(Widget a, Widget b) {
+                return b.x - a.x;
+            }
+        });
+    }
+
+    private void finishShot() {
+        ShotSuggestion shot = s.finishManualShot();
+        if (shot != null) {
+            s.selectedShot = shot;
+            filter = 0;
+            s.setMode(EditorSession.Mode.MONTAGE);
+        }
+    }
+
+    private boolean freeCameraKey(int key, int mods) {
+        switch (key) {
+            case Keys.TAB:
+            case Keys.ESCAPE: s.setMode(EditorSession.Mode.MONTAGE); return true;
+            case Keys.K: s.addKeyframe(); return true;
+            case Keys.ENTER:
+            case Keys.KP_ENTER: finishShot(); return true;
+            case Keys.BACKSPACE:
+            case Keys.DELETE:
+                s.clearKeyframes();
+                s.toast("Images clés effacées.", false);
+                return true;
+            case Keys.P: s.freePlaying = !s.freePlaying; return true;
+            case Keys.LEFT: s.freeSeek(-5000); return true;
+            case Keys.RIGHT: s.freeSeek(5000); return true;
+            case Keys.UP: s.stepFreeSpeed(1); return true;
+            case Keys.DOWN: s.stepFreeSpeed(-1); return true;
+            case Keys.R: s.freeCam.resetLens(); return true;
+            default: return true;
+        }
+    }
+
+    private void renderMontage(Gfx g, int mx, int my) {
         if (s.export != null && s.export.state() != ExportJob.State.CANCELLED) {
             renderExport(g, mx, my);
             return;
@@ -902,13 +1052,30 @@ public final class EditorView {
         if (focus != null) focus.focusChanged(true);
     }
 
+    @Override
     public void setModifiers(int m) {
         mods = m;
         timeline.setMods(m);
     }
 
+    @Override
     public boolean mouseDown(double mx, double my, int button) {
         if (s.export != null) return exportClick(mx, my);
+        if (s.mode == EditorSession.Mode.FULLSCREEN) {
+            s.togglePlay();
+            return true;
+        }
+        if (s.mode == EditorSession.Mode.FREE_CAMERA) {
+            for (Widget w : freeWidgets) {
+                if (w.contains(mx, my)) {
+                    pressed = w;
+                    w.mouseDown(mx, my, button);
+                    return true;
+                }
+            }
+            lookDrag = true;
+            return true;
+        }
         if (panel != Panel.NONE) {
             for (Widget w : panelWidgets) {
                 if (w.contains(mx, my)) {
@@ -986,16 +1153,31 @@ public final class EditorView {
         return false;
     }
 
-    public void mouseDrag(double mx, double my, int button) {
+    @Override
+    public void mouseDrag(double mx, double my, int button, double dx, double dy) {
+        if (lookDrag) {
+            s.freeCam.look(dx * 2, dy * 2);
+            return;
+        }
         if (pressed != null) pressed.mouseDrag(mx, my, button);
     }
 
+    @Override
     public void mouseUp(double mx, double my, int button) {
+        lookDrag = false;
         if (pressed != null) pressed.mouseUp(mx, my, button);
         pressed = null;
     }
 
+    @Override
     public boolean scroll(double mx, double my, double amount) {
+        if (s.mode == EditorSession.Mode.FREE_CAMERA) {
+            if ((mods & Keys.MOD_CONTROL) != 0) s.freeCam.zoom(-amount * 5);
+            else if ((mods & Keys.MOD_ALT) != 0) s.freeCam.roll(amount * 2);
+            else Redo.config().flySpeed = Math.max(0.5, Math.min(200, Redo.config().flySpeed * Math.pow(1.25, amount)));
+            return true;
+        }
+        if (s.mode == EditorSession.Mode.FULLSCREEN) return true;
         if (panel != Panel.NONE) {
             for (Widget w : panelWidgets) if (w.scroll(mx, my, amount)) return true;
             return true;
@@ -1009,8 +1191,20 @@ public final class EditorView {
     }
 
     /** Returns true if the key was used. Escape closes panels first, then asks to leave. */
+    @Override
     public boolean key(int key, int mods) {
         setModifiers(mods);
+        if (s.export == null && s.mode == EditorSession.Mode.FREE_CAMERA) return freeCameraKey(key, mods);
+        if (s.export == null && s.mode == EditorSession.Mode.FULLSCREEN) {
+            switch (key) {
+                case Keys.ESCAPE:
+                case Keys.F: s.setMode(EditorSession.Mode.MONTAGE); return true;
+                case Keys.SPACE: s.togglePlay(); return true;
+                case Keys.LEFT: s.step(-5000); return true;
+                case Keys.RIGHT: s.step(5000); return true;
+                default: return true;
+            }
+        }
         if (focus != null) {
             if (key == Keys.ESCAPE) {
                 setFocus(null);
@@ -1038,8 +1232,8 @@ public final class EditorView {
             case Keys.BACKSPACE: s.deleteSelected(!Keys.shift(mods)); return true;
             case Keys.Z: if (ctrl) { if (Keys.shift(mods)) s.redo(); else s.undo(); return true; } return false;
             case Keys.Y: if (ctrl) { s.redo(); return true; } return false;
-            case Keys.TAB: s.setMode(EditorSession.Mode.FREE_CAMERA); host.enterFreeCamera(); return true;
-            case Keys.F: s.setMode(EditorSession.Mode.FULLSCREEN); host.enterFullscreen(); return true;
+            case Keys.TAB: s.setMode(EditorSession.Mode.FREE_CAMERA); return true;
+            case Keys.F: s.setMode(EditorSession.Mode.FULLSCREEN); return true;
             case Keys.ENTER:
                 if (s.selectedShot != null) s.insertShot(s.selectedShot);
                 return true;
@@ -1057,11 +1251,13 @@ public final class EditorView {
         }
     }
 
+    @Override
     public boolean chr(char c) {
         return focus != null && focus.chr(c);
     }
 
     /** True when a text field has the keyboard (the platform should not treat keys as shortcuts). */
+    @Override
     public boolean typing() {
         return focus instanceof TextField;
     }

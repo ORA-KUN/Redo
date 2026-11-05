@@ -8,11 +8,11 @@ public interface EditorHost {
 
     void openFolder(File folder);
 
-    /** Closes the editor screen and lets the user fly the free camera. */
-    void enterFreeCamera();
-
-    /** Hides the editor while the sequence plays full screen (Esc comes back). */
-    void enterFullscreen();
+    /**
+     * Reads the player's movement keys (as bound in the game options) into
+     * {forward, strafe right, up, sprint}, each -1, 0 or 1.
+     */
+    void movement(double[] out);
 
     /** Leaves the replay. */
     void exitReplay();
@@ -20,4 +20,7 @@ public interface EditorHost {
     int framebufferWidth();
 
     int framebufferHeight();
+
+    /** True if captured frames are bottom-up (raw OpenGL reads), false if already top-down. */
+    boolean framesBottomUp();
 }

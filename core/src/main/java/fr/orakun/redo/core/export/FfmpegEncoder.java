@@ -39,7 +39,7 @@ public final class FfmpegEncoder {
      * @param outW,outH size of the video; the image is scaled to cover it and centre-cropped
      */
     public FfmpegEncoder(File ffmpeg, ExportFormat format, int crf, int fps, int inW, int inH, int outW, int outH,
-                         File output) throws IOException {
+                         File output, boolean bottomUp) throws IOException {
         this.output = output;
         this.frameBytes = inW * inH * 4;
         List<String> cmd = new ArrayList<String>();
@@ -59,7 +59,7 @@ public final class FfmpegEncoder {
         cmd.add("-i");
         cmd.add("-");
         cmd.add("-vf");
-        cmd.add(filter(inW, inH, outW, outH));
+        cmd.add(filter(inW, inH, outW, outH, bottomUp));
         cmd.addAll(format.encoderArgs(crf));
         if (format.isSequence()) {
             if (!output.isDirectory() && !output.mkdirs()) throw new IOException("Impossible de créer " + output);
@@ -102,8 +102,8 @@ public final class FfmpegEncoder {
         writer.start();
     }
 
-    static String filter(int inW, int inH, int outW, int outH) {
-        StringBuilder vf = new StringBuilder("vflip");
+    static String filter(int inW, int inH, int outW, int outH, boolean bottomUp) {
+        StringBuilder vf = new StringBuilder(bottomUp ? "vflip" : "null");
         if (inW != outW || inH != outH) {
             double scale = Math.max(outW / (double) inW, outH / (double) inH);
             int sw = even((int) Math.ceil(inW * scale));

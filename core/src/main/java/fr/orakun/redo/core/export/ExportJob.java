@@ -49,6 +49,7 @@ public final class ExportJob {
     private volatile String error;
     private final long startedAt = System.currentTimeMillis();
     private Target target;
+    private boolean bottomUp = true;
 
     public ExportJob(Sequence sequence, ExportSettings settings, File ffmpeg, File output, int framebufferW, int framebufferH) {
         this.sequence = sequence;
@@ -60,13 +61,18 @@ public final class ExportJob {
         this.frameCount = Math.max(1, (int) Math.ceil(sequence.duration() * settings.fps / 1000.0));
     }
 
+    /** Whether frames come bottom-up (OpenGL read) or top-down (already flipped images). */
+    public void setBottomUp(boolean b) {
+        bottomUp = b;
+    }
+
     /** Starts ffmpeg. Returns false (and sets the error) if it cannot start. */
     public boolean start() {
         try {
             File parent = output.getParentFile();
             if (parent != null) parent.mkdirs();
             encoder = new FfmpegEncoder(ffmpeg, settings.format, settings.crf, settings.fps, inW, inH,
-                    settings.width, settings.height, output);
+                    settings.width, settings.height, output, bottomUp);
             return true;
         } catch (IOException e) {
             fail("Impossible de lancer ffmpeg : " + e.getMessage());
@@ -116,19 +122,30 @@ public final class ExportJob {
     /** What to render for the current frame. */
     public Target target() {
         if (target != null && target.frame == frame) return target;
-        double t = frame * 1000.0 / settings.fps;
-        Sequence.Frame f = sequence.evaluate(t);
-        if (f == null || f.clip == null) {
-            target = new Target(frame, t, -1, null, 1, null);
-        } else {
-            target = new Target(frame, t, f.replayTimeMs, f.camera, f.fade, f.clip);
-        }
+        target = target(frame);
         return target;
+    }
+
+    /** What to render for any frame of the video. */
+    public Target target(int index) {
+        double t = index * 1000.0 / settings.fps;
+        Sequence.Frame f = sequence.evaluate(Math.min(t, Math.max(0, sequence.duration() - 1)));
+        if (f == null || f.clip == null) return new Target(index, t, -1, null, 1, null);
+        return new Target(index, t, f.replayTimeMs, f.camera, f.fade, f.clip);
     }
 
     /** Hands over the pixels of the current frame (RGBA, bottom-up rows as read from OpenGL). */
     public void submit(ByteBuffer rgba) {
         if (state != State.RENDERING) return;
+        double fade = target().fade;
+        if (fade > 0.001) {
+            int k = (int) Math.round((1 - Math.min(1, fade)) * 256);
+            for (int i = rgba.position(); i + 3 < rgba.limit(); i += 4) {
+                rgba.put(i, (byte) (((rgba.get(i) & 0xFF) * k) >> 8));
+                rgba.put(i + 1, (byte) (((rgba.get(i + 1) & 0xFF) * k) >> 8));
+                rgba.put(i + 2, (byte) (((rgba.get(i + 2) & 0xFF) * k) >> 8));
+            }
+        }
         try {
             encoder.writeFrame(rgba);
             frame++;
@@ -140,6 +157,15 @@ public final class ExportJob {
 
     public void submit(byte[] rgba) {
         if (state != State.RENDERING) return;
+        double fade = target().fade;
+        if (fade > 0.001) {
+            int k = (int) Math.round((1 - Math.min(1, fade)) * 256);
+            for (int i = 0; i + 3 < rgba.length; i += 4) {
+                rgba[i] = (byte) (((rgba[i] & 0xFF) * k) >> 8);
+                rgba[i + 1] = (byte) (((rgba[i + 1] & 0xFF) * k) >> 8);
+                rgba[i + 2] = (byte) (((rgba[i + 2] & 0xFF) * k) >> 8);
+            }
+        }
         try {
             encoder.writeFrame(rgba);
             frame++;
