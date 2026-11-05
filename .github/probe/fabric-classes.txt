@@ -1,6 +1,11 @@
 # One class per line (javap -p). "Class :: regex" keeps only matching members (constructors always kept).
 # "grep <regex>" lists the class names matching the regex.
 # "code Class :: regex" prints the bytecode of the methods whose declaration matches the regex.
+# Round 8: keeping the editor on screen while the replay world is rebuilt
+net.minecraft.client.Minecraft :: setScreen|gui|updateScreenAndTick|setLevel|disconnect
+grep ^net/minecraft/client/gui/[A-Za-z]+$
+net.minecraft.client.gui.Gui :: setScreen|screen|hud
+code net.minecraft.client.Minecraft :: setScreen\(
 # Round 7: scaling the editor, and a button in the pause menu
 net.minecraft.client.gui.GuiGraphics :: pose|enableScissor|guiWidth|guiHeight
 net.minecraft.client.gui.GuiGraphicsExtractor :: pose|enableScissor|guiWidth|guiHeight

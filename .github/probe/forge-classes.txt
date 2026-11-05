@@ -33,3 +33,6 @@ net.minecraftforge.client.event.RenderWorldLastEvent :: public
 net.minecraftforge.fml.common.gameevent.TickEvent$RenderTickEvent :: public
 net.minecraftforge.fml.common.network.handshake.NetworkDispatcher :: public
 net.minecraftforge.fml.common.network.internal.FMLNetworkHandler :: public
+# Round 8: no loading screen while the replay world is rebuilt
+net.minecraft.client.LoadingScreenRenderer :: setLoadingProgress|displayString|resetProgressAndMessage|displayLoadingString
+code net.minecraft.client.Minecraft :: loadWorld\(Lnet
