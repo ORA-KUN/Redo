@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "${id}",
+  "version": "${version}",
+  "name": "${name}",
+  "description": "Replay mod: records your games, builds clean camera shots and a trailer by itself, with a built-in video editor and prompt-made shots.",
+  "authors": ["ORA"],
+  "contact": {
+    "sources": "https://github.com/ORA-KUN/Redo"
+  },
+  "license": "All-Rights-Reserved",
+  "icon": "assets/redo/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["fr.orakun.redo.fabric.RedoFabric"]
+  },
+  "mixins": ["redo.mixins.json"],
+  "accessWidener": "redo.ct",
+  "depends": {
+    "fabricloader": ">=${loader}",
+    "minecraft": "${minecraft}"
+  }
+}

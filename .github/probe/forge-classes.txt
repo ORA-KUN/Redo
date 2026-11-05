@@ -1,0 +1,44 @@
+# One class per line (javap -p). "Class :: regex" keeps only matching members.
+net.minecraft.util.MessageDeserializer
+net.minecraft.network.NetworkManager :: <init>|channel|setNetHandler|getNetHandler|channelRead0|setConnectionState|isChannelOpen|processReceivedPackets|isLocalChannel|closeChannel|sendPacket|checkDisconnected|field_|public
+net.minecraft.network.EnumConnectionState :: getPacket|getPacketId|PLAY|getFromPacket
+net.minecraft.network.PacketBuffer :: <init>|readVarIntFromBuffer|readVarInt
+net.minecraft.network.Packet
+net.minecraft.client.network.NetHandlerPlayClient :: <init>|handleJoinGame|handlePlayerPosLook|clientWorldController|gameController|getNetworkManager|cleanup|onDisconnect
+net.minecraft.client.Minecraft :: timer|thePlayer|theWorld|myNetworkManager|entityRenderer|renderGlobal|getRenderViewEntity|setRenderViewEntity|displayGuiScreen|loadWorld|getFramebuffer|isGamePaused|runTick|currentScreen|gameSettings|playerController|fontRendererObj|ingameGUI|displayWidth|displayHeight|isSingleplayer|getCurrentServerData|setServerData|getNetHandler|runGameLoop|launchedVersion|mcDataDir|getSystemTime|renderPartialTicks
+net.minecraft.util.Timer
+net.minecraft.client.renderer.EntityRenderer :: updateCameraAndRender|renderWorld|orientCamera|setupCameraTransform|getFOVModifier|hurtCameraEffect|setupViewBobbing|renderHand|renderWorldPass|func_
+net.minecraft.client.renderer.ActiveRenderInfo :: public
+net.minecraft.client.shader.Framebuffer :: public
+net.minecraft.util.ScreenShotHelper :: public
+net.minecraft.client.gui.GuiScreen :: drawScreen|initGui|keyTyped|mouseClicked|mouseReleased|mouseClickMove|handleMouseInput|handleKeyboardInput|doesGuiPauseGame|onGuiClosed|updateScreen|width|height|buttonList|setWorldAndResolution|drawDefaultBackground
+net.minecraft.client.gui.Gui :: drawRect|drawString|drawGradientRect
+net.minecraft.client.gui.FontRenderer :: getStringWidth|FONT_HEIGHT|drawString|drawStringWithShadow
+net.minecraft.client.gui.ScaledResolution :: public
+net.minecraft.client.gui.GuiMainMenu :: initGui|actionPerformed
+net.minecraft.client.gui.GuiIngameMenu :: initGui|actionPerformed
+net.minecraft.client.gui.GuiIngame :: renderGameOverlay
+net.minecraft.client.multiplayer.WorldClient :: <init>|getEntityByID|addEntityToWorld|removeEntityFromWorld|loadedEntityList
+net.minecraft.client.entity.EntityOtherPlayerMP :: <init>|setPositionAndRotation2|onLivingUpdate|otherPlayerMP
+net.minecraft.client.entity.EntityPlayerSP :: <init>|sendQueue|movementInput
+net.minecraft.entity.Entity :: setPositionAndRotation|setLocationAndAngles|prevPos|lastTick|rotationYaw|rotationPitch|getEntityId|getUniqueID|isSneaking|isSprinting|onGround|isRiding|isInvisible|getName\(|ridingEntity|ticksExisted|posX|noClip
+net.minecraft.entity.EntityLivingBase :: rotationYawHead|renderYawOffset|swingItem|isSwingInProgress|hurtTime|getHeldItem|getEquipmentInSlot|isPlayerSleeping|isUsingItem|getCurrentArmor|prevRotationYawHead|prevRenderYawOffset|limbSwing
+net.minecraft.world.World :: getBlockState|rayTraceBlocks|getHeight\(|isBlockLoaded|getChunkFromBlockCoords|getTopSolidOrLiquidBlock|getHorizon
+net.minecraftforge.client.event.RenderGameOverlayEvent :: public
+net.minecraftforge.client.event.GuiScreenEvent$InitGuiEvent$Post :: public
+net.minecraftforge.client.event.GuiScreenEvent$ActionPerformedEvent$Post :: public
+net.minecraftforge.client.event.EntityViewRenderEvent$CameraSetup :: public
+net.minecraftforge.client.event.EntityViewRenderEvent$FOVModifier :: public
+net.minecraftforge.client.event.RenderWorldLastEvent :: public
+net.minecraftforge.fml.common.gameevent.TickEvent$RenderTickEvent :: public
+net.minecraftforge.fml.common.network.handshake.NetworkDispatcher :: public
+net.minecraftforge.fml.common.network.internal.FMLNetworkHandler :: public
+# Round 8: no loading screen while the replay world is rebuilt
+net.minecraft.client.LoadingScreenRenderer :: setLoadingProgress|displayString|resetProgressAndMessage|displayLoadingString
+code net.minecraft.client.Minecraft :: loadWorld\(Lnet
+# Round 9: keeping the last image on screen while the replay world is rebuilt
+net.minecraft.client.renderer.RenderGlobal :: hasNoChunkUpdates|chunksToUpdate|renderDispatcher|getDebugInfoRenders|displayListEntitiesDirty
+net.minecraft.client.renderer.chunk.ChunkRenderDispatcher :: public
+net.minecraft.client.renderer.OpenGlHelper :: [Ff]ramebuffer|GL_FRAMEBUFFER|glBindFramebuffer|framebufferType
+code net.minecraft.client.renderer.RenderGlobal :: hasNoChunkUpdates
+code net.minecraft.client.renderer.chunk.ChunkRenderDispatcher :: hasChunkUpdates|hasNoChunkUpdates

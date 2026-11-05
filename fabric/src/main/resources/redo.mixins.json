@@ -1,0 +1,26 @@
+{
+  "required": true,
+  "package": "fr.orakun.redo.fabric.mixin",
+  "compatibilityLevel": "${java}",
+  "client": [
+    "CameraMixin",
+    "ChatComponentMixin",
+    "ClientHandshakePacketListenerImplMixin",
+    "ClientLevelMixin",
+    "ConnectionMixin",
+    "DeltaTrackerTimerMixin",
+    "GameRendererMixin",
+    "GuiMixin",
+    "KeyMappingAccessor",
+    "LevelRendererMixin",
+    "LocalPlayerMixin",
+    "MinecraftMixin",
+    "PacketDecoderMixin",
+    "PauseScreenMixin",
+    "ScreenSwitchMixin",
+    "TitleScreenMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

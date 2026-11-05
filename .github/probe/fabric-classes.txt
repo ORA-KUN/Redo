@@ -1,0 +1,51 @@
+# One class per line (javap -p). "Class :: regex" keeps only matching members (constructors always kept).
+# "grep <regex>" lists the class names matching the regex.
+# "code Class :: regex" prints the bytecode of the methods whose declaration matches the regex.
+# Round 9: keeping the last image on screen while the replay world is rebuilt
+net.minecraft.client.renderer.texture.DynamicTexture :: getTexture|upload|getPixels|setPixels
+net.minecraft.client.renderer.texture.AbstractTexture :: texture|getTexture|textureView|getTextureView|sampler|Sampler|setFilter|setClamp|close
+net.minecraft.client.renderer.texture.TextureManager :: register|release|getTexture
+com.mojang.blaze3d.systems.RenderSystem :: getDevice|getSampler
+com.mojang.blaze3d.systems.GpuDevice :: createCommandEncoder|createTexture
+com.mojang.blaze3d.systems.CommandEncoder :: copyTextureToTexture
+com.mojang.blaze3d.pipeline.RenderTarget :: getColorTexture|width|height|colorTexture|blitToScreen|blitAndBlendToTexture
+com.mojang.blaze3d.textures.GpuTexture :: usage|getWidth|getHeight|getFormat|USAGE
+grep ^net/minecraft/resources/(ResourceLocation|Identifier)$
+net.minecraft.resources.Identifier :: fromNamespaceAndPath|withDefaultNamespace
+net.minecraft.resources.ResourceLocation :: fromNamespaceAndPath|withDefaultNamespace
+net.minecraft.client.gui.GuiGraphics :: blit
+net.minecraft.client.gui.GuiGraphicsExtractor :: blit
+net.minecraft.client.renderer.RenderPipelines :: GUI_TEXTURED
+net.minecraft.client.renderer.LevelRenderer :: [Ss]ection|[Cc]ompiled|[Rr]endered|[Cc]hunk
+grep ^net/minecraft/client/renderer/chunk/[A-Za-z]+$
+net.minecraft.client.renderer.chunk.SectionRenderDispatcher :: [Qq]ueue|[Uu]pload|[Ee]mpty|[Ss]tats|count
+code net.minecraft.client.renderer.texture.DynamicTexture :: DynamicTexture\(
+code net.minecraft.client.renderer.LevelRenderer :: hasRenderedAllSections
+# Round 8: keeping the editor on screen while the replay world is rebuilt
+net.minecraft.client.Minecraft :: setScreen|gui|updateScreenAndTick|setLevel|disconnect
+grep ^net/minecraft/client/gui/[A-Za-z]+$
+net.minecraft.client.gui.Gui :: setScreen|screen|hud
+code net.minecraft.client.Minecraft :: setScreen\(
+# Round 7: scaling the editor, and a button in the pause menu
+net.minecraft.client.gui.GuiGraphics :: pose|enableScissor|guiWidth|guiHeight
+net.minecraft.client.gui.GuiGraphicsExtractor :: pose|enableScissor|guiWidth|guiHeight
+code net.minecraft.client.gui.GuiGraphics :: enableScissor
+code net.minecraft.client.gui.GuiGraphicsExtractor :: enableScissor
+com.mojang.blaze3d.platform.Window :: getWidth|getHeight|getGuiScale|getScreenWidth|getGuiScaledWidth
+net.minecraft.client.gui.screens.PauseScreen :: init|createPauseMenu|showPauseMenu
+net.minecraft.client.gui.components.Button :: builder|onPress|setMessage
+net.minecraft.client.gui.components.AbstractWidget :: setMessage|getMessage
+# Round 6: keyboard keys in 26.3
+com.mojang.blaze3d.platform.InputConstants$Type
+com.mojang.blaze3d.platform.InputConstants$Key
+grep ^com/mojang/blaze3d/platform/InputConstants
+# Round 5: how the client handles packets that arrive on its own thread (replay connection)
+grep PacketProcessor
+net.minecraft.network.PacketProcessor
+code net.minecraft.network.PacketProcessor :: isSameThread|scheduleIfPossible|processQueuedPackets
+code net.minecraft.network.protocol.PacketUtils :: ensureRunningOnSameThread
+net.minecraft.client.Minecraft :: [Pp]acketProcessor|runTick|tick\(
+code net.minecraft.client.Minecraft :: runTick\(|packetProcessor\(
+code net.minecraft.client.multiplayer.ClientConfigurationPacketListenerImpl :: handleConfigurationFinished
+code net.minecraft.network.Connection :: setupInboundProtocol|channelRead0
+net.minecraft.network.Connection :: getPacketListener|setupInboundProtocol

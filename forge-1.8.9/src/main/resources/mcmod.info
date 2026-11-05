@@ -1,0 +1,16 @@
+[
+  {
+    "modid": "${modid}",
+    "name": "Redo",
+    "description": "Replay mod: records your games, builds clean camera shots and a trailer by itself, with a built-in video editor and prompt-made shots.",
+    "version": "${version}",
+    "mcversion": "${mcversion}",
+    "url": "https://github.com/ORA-KUN/Redo",
+    "updateUrl": "",
+    "authorList": ["ORA"],
+    "credits": "",
+    "logoFile": "assets/redo/logo.png",
+    "screenshots": [],
+    "dependencies": []
+  }
+]

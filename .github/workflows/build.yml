@@ -1,0 +1,159 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    name: Core tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Test the shared core
+        working-directory: core
+        run: chmod +x gradlew && ./gradlew test --console=plain
+      - name: Upload test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-test-report
+          path: core/build/reports/tests/
+
+  forge:
+    name: Redo 1.8.9 (Forge)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            8
+            17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build
+        working-directory: forge-1.8.9
+        run: chmod +x gradlew && ./gradlew build --console=plain
+      - name: Upload jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: redo-1.8.9
+          path: forge-1.8.9/build/libs/*.jar
+
+  fabric:
+    name: Redo ${{ matrix.mc }} (Fabric)
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        mc: ["1.21.11", "26.1", "26.2", "26.3"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            21
+            25
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build
+        working-directory: fabric
+        run: |
+          chmod +x gradlew
+          set -o pipefail
+          ./gradlew ":${{ matrix.mc }}:buildAndCollect" --console=plain 2>&1 | tee build.log
+      - name: Compile errors (short)
+        if: failure()
+        working-directory: fabric
+        run: grep -A1 "error:" build.log | grep -v "^--" | sed -E 's#^.*/fr/orakun/redo/fabric/##; s/^ +//' | awk '!seen[$0]++' | head -150
+      - name: Upload jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: redo-${{ matrix.mc }}
+          path: fabric/build/libs/*/*.jar
+
+  e2e:
+    name: Redo ${{ matrix.mc }} in-game test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - loader: fabric
+            mc: "1.21.11"
+            java: |
+              21
+              25
+          - loader: fabric
+            mc: "26.1"
+            java: |
+              21
+              25
+          - loader: fabric
+            mc: "26.2"
+            java: |
+              21
+              25
+          - loader: fabric
+            mc: "26.3"
+            java: |
+              21
+              25
+          - loader: forge
+            mc: "1.8.9"
+            java: |
+              8
+              17
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install a virtual display, software OpenGL and ffmpeg
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -yq xvfb x11-xserver-utils libgl1-mesa-dri libglx-mesa0 libegl1 libxrandr2 libxcursor1 libxi6 libxinerama1 libxxf86vm1 mesa-vulkan-drivers ffmpeg jq
+      - name: Join a test server, record, replay and export
+        run: bash .github/e2e/game.sh ${{ matrix.loader }} ${{ matrix.mc }}
+      - name: Upload screenshots, logs and the recording
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-${{ matrix.mc }}
+          path: e2e-out/
+
+  release:
+    name: Publish the jars
+    # Each merge into main (all builds and in-game tests green) replaces the Release of the
+    # current version, with one jar per Minecraft version under a fixed name, so that
+    # https://github.com/ORA-KUN/Redo/releases/latest/download/redo-<version>.jar never changes.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [core, forge, fabric, e2e]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: redo-*
+          path: dist
+      - name: Publish the Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/release.sh
