@@ -101,6 +101,10 @@ public final class FabricReplay extends AbstractReplay {
             id = UUID.nameUUIDFromBytes(("Redo:" + archive.meta.selfName).getBytes("UTF-8"));
         }
         String name = archive.meta.selfName == null || archive.meta.selfName.isEmpty() ? "Redo" : archive.meta.selfName;
+        // The "login finished" packet is made up here instead of being decoded: swap the login decoder
+        // for the waiting placeholder, as a decoded terminal packet does, so that the configuration
+        // protocol set up by handleLoginFinished replaces it (otherwise everything decodes as login).
+        p.replace("decoder", "inbound_config", new UnconfiguredPipelineHandler.Inbound());
         login.handleLoginFinished(new ClientboundLoginFinishedPacket(new GameProfile(id, name)));
         fed = 0;
     }
