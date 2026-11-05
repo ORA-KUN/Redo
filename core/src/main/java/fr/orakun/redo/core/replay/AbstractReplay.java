@@ -29,6 +29,7 @@ public abstract class AbstractReplay implements ReplayBackend {
     private boolean paused = true;
     private double speed = 1;
     private long seekTarget = -1;
+    private boolean restarting;
     private CameraState camera;
     private boolean exporting;
     private boolean failed;
@@ -253,9 +254,13 @@ public abstract class AbstractReplay implements ReplayBackend {
             seekTarget = t;
             return;
         }
-        // backwards: replay from the start
-        closeWorld();
+        // backwards: replay from the start. The game may draw the open screen (the editor) while
+        // the world is torn down: it sees a seek in progress and does not ask for another one.
+        seekTarget = t;
+        if (restarting) return;
+        restarting = true;
         try {
+            closeWorld();
             if (reader != null) reader.close();
             reader = archive.openPackets();
             next = reader.next();
@@ -265,8 +270,10 @@ public abstract class AbstractReplay implements ReplayBackend {
             RedoLog.error("Could not restart the replay", e);
             failed = true;
             return;
+        } finally {
+            restarting = false;
         }
-        seekTarget = t;
+        if (seekTarget < 0) seekTarget = t;
     }
 
     @Override

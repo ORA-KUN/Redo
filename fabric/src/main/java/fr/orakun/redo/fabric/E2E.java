@@ -326,7 +326,8 @@ final class E2E {
                 if (ticks == 20 * 3) shot("playing");
                 if (ticks == 20 * 5) {
                     if (editorCheck == 0) log("editor screenshot not checked (no picture yet)");
-                    log("replay time after 5 s of playback: " + (long) c.replay.timeMs() + " ms");
+                    log("replay time after 5 s of playback: " + (long) c.replay.timeMs() + " ms, playhead " + (long) s.playheadMs + " ms, clip at playhead "
+                            + (s.sequence.clipAt(s.playheadMs) == null ? "none" : s.sequence.clipAt(s.playheadMs).shotType + " from " + s.sequence.clipAt(s.playheadMs).sourceStartMs + " ms"));
                     if (s.playing) s.togglePlay();
                     next(Step.SEEK);
                 }
