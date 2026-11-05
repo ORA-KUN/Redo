@@ -1,5 +1,6 @@
 package fr.orakun.redo.fabric;
 
+import fr.orakun.redo.core.ui.UiScale;
 import fr.orakun.redo.core.ui.View;
 //? if >=26.1 {
 /*import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -34,7 +35,32 @@ public final class RedoScreen extends Screen {
         long now = System.nanoTime();
         double dt = (now - lastFrame) / 1_000_000.0;
         lastFrame = now;
-        view.render(new FabricGfx(g), mouseX, mouseY, dt);
+        // Redo screens have their own size, whatever the game's interface size
+        int px = pixels();
+        float k = (float) (px / guiScale());
+        g.pose().pushMatrix();
+        g.pose().scale(k, k);
+        try {
+            view.render(new FabricGfx(g, Compat.windowWidth() / px, Compat.windowHeight() / px),
+                    (int) (mouseX / k), (int) (mouseY / k), dt);
+        } finally {
+            g.pose().popMatrix();
+        }
+    }
+
+    /** Screen pixels per Redo interface pixel (see {@link UiScale}). */
+    private static int pixels() {
+        return UiScale.pixels(Compat.windowWidth(), Compat.windowHeight());
+    }
+
+    /** Screen pixels per game interface pixel. */
+    private double guiScale() {
+        return width <= 0 ? 1 : Compat.windowWidth() / (double) width;
+    }
+
+    /** Game interface coordinate to Redo interface coordinate. */
+    private double units(double v) {
+        return v * guiScale() / pixels();
     }
 
     @Override
@@ -64,15 +90,15 @@ public final class RedoScreen extends Screen {
     @Override
     public boolean mouseClicked(MouseButtonEvent e, boolean doubleClick) {
         view.setModifiers(e.modifiers());
-        lastX = e.x();
-        lastY = e.y();
-        return view.mouseDown(e.x(), e.y(), e.button());
+        lastX = units(e.x());
+        lastY = units(e.y());
+        return view.mouseDown(lastX, lastY, e.button());
     }
 
     @Override
     public boolean mouseReleased(MouseButtonEvent e) {
         view.setModifiers(e.modifiers());
-        view.mouseUp(e.x(), e.y(), e.button());
+        view.mouseUp(units(e.x()), units(e.y()), e.button());
         lastX = lastY = Double.NaN;
         return true;
     }
@@ -80,14 +106,14 @@ public final class RedoScreen extends Screen {
     @Override
     public boolean mouseDragged(MouseButtonEvent e, double dx, double dy) {
         view.setModifiers(e.modifiers());
-        view.mouseDrag(e.x(), e.y(), e.button(), dx, dy);
+        view.mouseDrag(units(e.x()), units(e.y()), e.button(), units(dx), units(dy));
         return true;
     }
 
     @Override
     public boolean mouseScrolled(double x, double y, double scrollX, double scrollY) {
         view.setModifiers(RedoClient.modifiers());
-        return view.scroll(x, y, scrollY);
+        return view.scroll(units(x), units(y), scrollY);
     }
 
     @Override

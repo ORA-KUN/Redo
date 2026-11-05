@@ -11,18 +11,26 @@ import org.lwjgl.opengl.GL11;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-/** Redo's drawing interface on top of the 1.8.9 GUI helpers (scaled GUI coordinates). */
+/** Redo's drawing interface on top of the 1.8.9 GUI helpers. */
 public final class LegacyGfx implements Gfx {
     private final Minecraft mc = Minecraft.getMinecraft();
     private final FontRenderer font = mc.fontRendererObj;
     private final int w, h, scale;
     private final Deque<int[]> clips = new ArrayDeque<int[]>();
 
+    /** In the game's interface coordinates (HUD). */
     public LegacyGfx() {
         ScaledResolution sr = new ScaledResolution(mc);
         w = sr.getScaledWidth();
         h = sr.getScaledHeight();
         scale = sr.getScaleFactor();
+    }
+
+    /** In Redo's own interface coordinates: {@code pixels} screen pixels per unit (the caller scales the matrix). */
+    public LegacyGfx(int pixels) {
+        scale = Math.max(1, pixels);
+        w = mc.displayWidth / scale;
+        h = mc.displayHeight / scale;
     }
 
     @Override

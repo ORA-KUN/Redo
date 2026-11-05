@@ -25,6 +25,12 @@ public final class LegacyEvents {
         if (e.phase == TickEvent.Phase.START) LegacyClient.renderStart();
     }
 
+    /** 1.8.9 draws the game interface under any open screen, even hidden: not over the replay. */
+    @SubscribeEvent
+    public void onOverlayPre(RenderGameOverlayEvent.Pre e) {
+        if (e.type == RenderGameOverlayEvent.ElementType.ALL && LegacyClient.replayActive()) e.setCanceled(true);
+    }
+
     @SubscribeEvent
     public void onOverlay(RenderGameOverlayEvent.Post e) {
         if (e.type == RenderGameOverlayEvent.ElementType.ALL) LegacyClient.renderHud();

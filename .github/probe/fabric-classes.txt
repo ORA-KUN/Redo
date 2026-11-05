@@ -1,6 +1,15 @@
 # One class per line (javap -p). "Class :: regex" keeps only matching members (constructors always kept).
 # "grep <regex>" lists the class names matching the regex.
 # "code Class :: regex" prints the bytecode of the methods whose declaration matches the regex.
+# Round 7: scaling the editor, and a button in the pause menu
+net.minecraft.client.gui.GuiGraphics :: pose|enableScissor|guiWidth|guiHeight
+net.minecraft.client.gui.GuiGraphicsExtractor :: pose|enableScissor|guiWidth|guiHeight
+code net.minecraft.client.gui.GuiGraphics :: enableScissor
+code net.minecraft.client.gui.GuiGraphicsExtractor :: enableScissor
+com.mojang.blaze3d.platform.Window :: getWidth|getHeight|getGuiScale|getScreenWidth|getGuiScaledWidth
+net.minecraft.client.gui.screens.PauseScreen :: init|createPauseMenu|showPauseMenu
+net.minecraft.client.gui.components.Button :: builder|onPress|setMessage
+net.minecraft.client.gui.components.AbstractWidget :: setMessage|getMessage
 # Round 6: keyboard keys in 26.3
 com.mojang.blaze3d.platform.InputConstants$Type
 com.mojang.blaze3d.platform.InputConstants$Key

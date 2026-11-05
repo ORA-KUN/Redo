@@ -14,6 +14,8 @@ import java.util.Map;
 
 /** User settings, stored in config/redo.json. */
 public final class RedoConfig {
+    private static final int VERSION = 1;
+
     /** Record every multiplayer session from the moment you join. */
     public boolean autoRecord = true;
     /** Keep recordings without asking when leaving a server. */
@@ -31,6 +33,8 @@ public final class RedoConfig {
     public double flySpeed = 10;
     /** Shows the small red dot while recording. */
     public boolean showRecordingIndicator = true;
+    /** Size of the Redo screens: screen pixels per interface pixel, 0 = automatic. */
+    public int uiScale = 0;
 
     private transient File file;
 
@@ -50,6 +54,7 @@ public final class RedoConfig {
                 in.close();
             }
             Map<String, Object> m = Json.parseObject(new String(data, "UTF-8"));
+            int version = Json.getInt(m, "configVersion", 1);
             c.autoRecord = Json.getBool(m, "autoRecord", c.autoRecord);
             c.autoSave = Json.getBool(m, "autoSave", c.autoSave);
             c.keyHighlight = Json.getInt(m, "keyHighlight", c.keyHighlight);
@@ -61,6 +66,8 @@ public final class RedoConfig {
             c.claudeModel = Json.getString(m, "claudeModel", c.claudeModel);
             c.flySpeed = Json.getDouble(m, "flySpeed", c.flySpeed);
             c.showRecordingIndicator = Json.getBool(m, "showRecordingIndicator", c.showRecordingIndicator);
+            c.uiScale = Math.max(0, Math.min(8, Json.getInt(m, "uiScale", c.uiScale)));
+            if (version < VERSION) c.save();
         } catch (Exception e) {
             RedoLog.warn("Invalid Redo config, using defaults: " + e);
         }
@@ -70,6 +77,7 @@ public final class RedoConfig {
     public void save() {
         if (file == null) return;
         Map<String, Object> m = Json.obj();
+        m.put("configVersion", VERSION);
         m.put("autoRecord", autoRecord);
         m.put("autoSave", autoSave);
         m.put("keyHighlight", keyHighlight);
@@ -81,6 +89,7 @@ public final class RedoConfig {
         m.put("claudeModel", claudeModel);
         m.put("flySpeed", flySpeed);
         m.put("showRecordingIndicator", showRecordingIndicator);
+        m.put("uiScale", uiScale);
         try {
             File parent = file.getParentFile();
             if (parent != null) parent.mkdirs();

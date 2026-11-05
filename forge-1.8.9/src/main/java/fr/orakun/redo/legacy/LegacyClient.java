@@ -40,6 +40,7 @@ import org.lwjgl.input.Keyboard;
 import org.lwjgl.opengl.GL11;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Set;
@@ -180,8 +181,11 @@ public final class LegacyClient {
         if (busy > 0) return;
         LegacyReplay r = replay();
         if (r == null) return;
-        ReplayController c = ReplayController.current();
         Minecraft mc = Minecraft.getMinecraft();
+        screenInput(mc);
+        r = replay();
+        if (r == null) return;
+        ReplayController c = ReplayController.current();
         busy++;
         try {
             if (r.failed()) {
@@ -206,6 +210,21 @@ public final class LegacyClient {
             fail("Erreur pendant la lecture : " + e);
         } finally {
             busy--;
+        }
+    }
+
+    /**
+     * 1.8.9 reads the mouse and keyboard of a screen inside the game tick, and a paused replay has
+     * no ticks: the editor would never get a click. During a replay the screen reads them every
+     * frame instead; the tick then finds the input queues empty.
+     */
+    private static void screenInput(Minecraft mc) {
+        GuiScreen s = mc.currentScreen;
+        if (s == null) return;
+        try {
+            s.handleInput();
+        } catch (IOException e) {
+            RedoLog.error("Screen input failed", e);
         }
     }
 

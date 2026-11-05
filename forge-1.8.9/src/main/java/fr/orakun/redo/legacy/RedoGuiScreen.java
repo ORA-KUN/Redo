@@ -1,8 +1,11 @@
 package fr.orakun.redo.legacy;
 
 import fr.orakun.redo.core.ui.Keys;
+import fr.orakun.redo.core.ui.UiScale;
 import fr.orakun.redo.core.ui.View;
 import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.gui.ScaledResolution;
+import net.minecraft.client.renderer.GlStateManager;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 
@@ -37,18 +40,35 @@ public final class RedoGuiScreen extends GuiScreen {
         return false;
     }
 
+    /** Screen pixels per Redo interface pixel (see {@link UiScale}). */
+    private int pixels() {
+        return UiScale.pixels(mc.displayWidth, mc.displayHeight);
+    }
+
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         long now = System.nanoTime();
         double dt = (now - lastFrame) / 1000000.0;
         lastFrame = now;
-        view.render(new LegacyGfx(), mouseX, mouseY, dt);
+        // Redo screens have their own size, whatever the game's interface size
+        int px = pixels();
+        float k = px / (float) new ScaledResolution(mc).getScaleFactor();
+        int mx = Mouse.getX() / px;
+        int my = (mc.displayHeight - Mouse.getY() - 1) / px;
+        GlStateManager.pushMatrix();
+        GlStateManager.scale(k, k, 1.0F);
+        try {
+            view.render(new LegacyGfx(px), mx, my, dt);
+        } finally {
+            GlStateManager.popMatrix();
+        }
     }
 
     @Override
     public void handleMouseInput() throws IOException {
-        double x = Mouse.getEventX() * (double) width / mc.displayWidth;
-        double y = height - Mouse.getEventY() * (double) height / mc.displayHeight - 1;
+        int px = pixels();
+        double x = Mouse.getEventX() / (double) px;
+        double y = (mc.displayHeight - Mouse.getEventY() - 1) / (double) px;
         int button = Mouse.getEventButton();
         view.setModifiers(LegacyClient.modifiers());
         if (button >= 0) {

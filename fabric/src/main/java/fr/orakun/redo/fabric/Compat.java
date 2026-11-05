@@ -22,6 +22,15 @@ final class Compat {
     private Compat() {
     }
 
+    /** Size of the game window in screen pixels. */
+    static int windowWidth() {
+        return Minecraft.getInstance().getWindow().getWidth();
+    }
+
+    static int windowHeight() {
+        return Minecraft.getInstance().getWindow().getHeight();
+    }
+
     static Screen screen() {
         //? if >=26.2 {
         /*return Minecraft.getInstance().gui.screen();

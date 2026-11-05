@@ -17,24 +17,36 @@ public final class FabricGfx implements Gfx {
     private final GuiGraphics g;
     //?}
     private final Font font;
+    private final int w, h;
 
     //? if >=26.1 {
     /*public FabricGfx(GuiGraphicsExtractor g) {
     *///?} else {
     public FabricGfx(GuiGraphics g) {
     //?}
+        this(g, g.guiWidth(), g.guiHeight());
+    }
+
+    /** With Redo's own interface size (the caller scales the pose to match). */
+    //? if >=26.1 {
+    /*public FabricGfx(GuiGraphicsExtractor g, int width, int height) {
+    *///?} else {
+    public FabricGfx(GuiGraphics g, int width, int height) {
+    //?}
         this.g = g;
         this.font = Minecraft.getInstance().font;
+        this.w = width;
+        this.h = height;
     }
 
     @Override
     public int width() {
-        return g.guiWidth();
+        return w;
     }
 
     @Override
     public int height() {
-        return g.guiHeight();
+        return h;
     }
 
     @Override
