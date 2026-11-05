@@ -78,7 +78,7 @@ final class FabricTrackSource implements TrackSource {
             if (le.isSleeping()) f |= EntitySample.SLEEPING;
             s.hurt = le.hurtTime > 0;
             s.dead = le.isDeadOrDying();
-            s.swinging = le.swinging;
+            s.swinging = Compat.swinging(le);
             s.usingItem = le.isUsingItem();
             s.bodyYaw = le.yBodyRot;
         }

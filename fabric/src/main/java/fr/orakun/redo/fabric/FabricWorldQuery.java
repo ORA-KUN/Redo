@@ -25,7 +25,7 @@ final class FabricWorldQuery implements WorldQuery {
         if (l == null) return false;
         pos.set((int) Math.floor(x), (int) Math.floor(y), (int) Math.floor(z));
         BlockState s = l.getBlockState(pos);
-        return s.blocksMotion() || s.liquid();
+        return Compat.blocksMotion(s) || s.liquid();
     }
 
     @Override

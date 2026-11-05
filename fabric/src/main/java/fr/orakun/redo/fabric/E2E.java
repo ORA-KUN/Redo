@@ -11,12 +11,16 @@ import fr.orakun.redo.core.replay.ReplayController;
 import fr.orakun.redo.core.ui.RecordingsView;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.PacketFlow;
 
 import java.io.File;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -62,7 +66,7 @@ final class E2E {
     private static void shot(String name) {
         Minecraft mc = Minecraft.getInstance();
         String file = String.format("e2e-%02d-%s.png", ++shots, name);
-        Screenshot.takeScreenshot(mc.getMainRenderTarget(), image -> {
+        Screenshot.takeScreenshot(Compat.mainTarget(), image -> {
             try {
                 long sum = 0;
                 int n = 0;
@@ -147,7 +151,8 @@ final class E2E {
                 if (ticks == 20 * 12) Recorder.toggleHighlight();
                 if (ticks >= 20 * 16) {
                     log("recorded " + (Recorder.session() == null ? -1 : Recorder.session().timeMs()) + " ms");
-                    mc.disconnectFromWorld(Component.literal("Redo E2E"));
+                    if (mc.level != null) mc.level.disconnect(Component.literal("Redo E2E"));
+                    mc.disconnectWithProgressScreen();
                     next(Step.LEAVE);
                 }
                 break;
@@ -168,10 +173,10 @@ final class E2E {
             case OPEN:
                 if (mc.level != null) return;
                 if (ticks == 20) {
-                    mc.setScreen(RedoClient.recordingsScreen(new TitleScreen()));
+                    Compat.setScreen(RedoClient.recordingsScreen(new TitleScreen()));
                 }
                 if (ticks == 40) {
-                    if (!(mc.screen instanceof RedoScreen) || !(((RedoScreen) mc.screen).view instanceof RecordingsView)) {
+                    if (!(Compat.screen() instanceof RedoScreen) || !(((RedoScreen) Compat.screen()).view instanceof RecordingsView)) {
                         fail("recordings screen did not open");
                         return;
                     }
@@ -200,7 +205,12 @@ final class E2E {
                     fail("replay closed while loading");
                     return;
                 }
-                boolean editor = mc.screen instanceof RedoScreen && ((RedoScreen) mc.screen).view instanceof EditorView;
+                boolean editor = Compat.screen() instanceof RedoScreen && ((RedoScreen) Compat.screen()).view instanceof EditorView;
+                if (ticks % 100 == 0) log("waiting for the editor: " + state(c));
+                if (ticks == 20 * 30 && mc.level == null) {
+                    // test of a hypothesis: packets stuck in the game's packet processor
+                    log("world still not loaded, " + processorState(true));
+                }
                 if (editor && mc.level != null && mc.player != null && !c.replay.isSeeking() && ticks > 20 * 3) {
                     EditorSession s = c.session();
                     log("replay world ready: player at " + (int) mc.player.getX() + " " + (int) mc.player.getY() + " "
@@ -210,7 +220,8 @@ final class E2E {
                     shot("editor");
                     next(Step.PLAY);
                 } else if (ticks > 20 * 120) {
-                    fail("the editor did not open (screen " + (mc.screen == null ? "none" : mc.screen.getClass().getSimpleName()) + ")");
+                    shot("editor-missing");
+                    fail("the editor did not open: " + state(c));
                 }
                 break;
             }
@@ -242,8 +253,8 @@ final class E2E {
                     r.seek(1000);
                     seekStartedAt = System.currentTimeMillis();
                 }
-                if (ticks > 5 && !r.isSeeking() && mc.level != null && mc.player != null && mc.screen instanceof RedoScreen
-                        && ((RedoScreen) mc.screen).view instanceof EditorView && ticks > 40) {
+                if (ticks > 5 && !r.isSeeking() && mc.level != null && mc.player != null && Compat.screen() instanceof RedoScreen
+                        && ((RedoScreen) Compat.screen()).view instanceof EditorView && ticks > 40) {
                     log("jumped back to " + (long) r.timeMs() + " ms in " + (System.currentTimeMillis() - seekStartedAt) + " ms");
                     if (Math.abs(r.timeMs() - 1000) > 200) {
                         fail("seek landed at " + r.timeMs());
@@ -269,7 +280,7 @@ final class E2E {
                     s.sequence.export.fps = 30;
                     s.sequence.export.width = 1280;
                     s.sequence.export.height = 720;
-                    if (!s.startExport(mc.getMainRenderTarget().width, mc.getMainRenderTarget().height, false)) {
+                    if (!s.startExport(Compat.frameWidth(), Compat.frameHeight(), false)) {
                         fail("export did not start (ffmpeg: " + s.ffmpeg() + ")");
                         return;
                     }
@@ -314,6 +325,54 @@ final class E2E {
                 break;
             default:
                 break;
+        }
+    }
+
+    /** What the replay is doing, for the log. */
+    private static String state(ReplayController c) {
+        Minecraft mc = Minecraft.getInstance();
+        Screen screen = Compat.screen();
+        String shown = screen == null ? "no screen" : screen instanceof RedoScreen
+                ? "RedoScreen/" + ((RedoScreen) screen).view.getClass().getSimpleName() : screen.getClass().getSimpleName();
+        String s = shown + ", level " + (mc.level != null) + ", player " + (mc.player != null);
+        if (c != null) {
+            s += ", time " + (long) c.replay.timeMs() + " ms, seeking " + c.replay.isSeeking() + ", paused " + c.replay.isPaused();
+            if (c.replay instanceof FabricReplay) s += ", " + ((FabricReplay) c.replay).debugState();
+        }
+        return s + ", " + processorState(false);
+    }
+
+    /**
+     * Test only: how many packets wait in the game's packet processor, found by reflection (the
+     * test runs with readable names). With {@code run}, they are handled right away.
+     */
+    private static String processorState(boolean run) {
+        Minecraft mc = Minecraft.getInstance();
+        try {
+            for (Class<?> type = mc.getClass(); type != null; type = type.getSuperclass()) {
+                for (Field f : type.getDeclaredFields()) {
+                    if (!f.getType().getSimpleName().equals("PacketProcessor")) continue;
+                    f.setAccessible(true);
+                    Object p = f.get(mc);
+                    int queued = -1;
+                    for (Field q : p.getClass().getDeclaredFields()) {
+                        if (Collection.class.isAssignableFrom(q.getType())) {
+                            q.setAccessible(true);
+                            queued = ((Collection<?>) q.get(p)).size();
+                        }
+                    }
+                    String s = "packet processor: " + queued + " queued";
+                    if (run && queued > 0) {
+                        Method m = p.getClass().getMethod("processQueuedPackets");
+                        m.invoke(p);
+                        s += ", handled by the test";
+                    }
+                    return s;
+                }
+            }
+            return "no packet processor";
+        } catch (Exception e) {
+            return "packet processor not readable: " + e;
         }
     }
 

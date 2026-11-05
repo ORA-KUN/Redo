@@ -72,8 +72,8 @@ public final class FabricReplay extends AbstractReplay {
     @Override
     public void start() throws Exception {
         Minecraft mc = Minecraft.getInstance();
-        hideGuiBefore = mc.options.hideGui;
-        mc.options.hideGui = true;
+        hideGuiBefore = Compat.hideGui();
+        Compat.setHideGui(true);
         super.start();
     }
 
@@ -105,7 +105,7 @@ public final class FabricReplay extends AbstractReplay {
         // for the waiting placeholder, as a decoded terminal packet does, so that the configuration
         // protocol set up by handleLoginFinished replaces it (otherwise everything decodes as login).
         p.replace("decoder", "inbound_config", new UnconfiguredPipelineHandler.Inbound());
-        login.handleLoginFinished(new ClientboundLoginFinishedPacket(new GameProfile(id, name)));
+        login.handleLoginFinished(Compat.loginFinished(new GameProfile(id, name)));
         fed = 0;
     }
 
@@ -161,7 +161,7 @@ public final class FabricReplay extends AbstractReplay {
         Minecraft mc = Minecraft.getInstance();
         ReplayController c = ReplayController.current();
         if (c != null && c.replay == this) c.close();
-        mc.options.hideGui = hideGuiBefore;
+        Compat.setHideGui(hideGuiBefore);
         RedoClient.busy++;
         try {
             mc.disconnect(RedoClient.recordingsScreen(new TitleScreen()), false);
@@ -175,7 +175,7 @@ public final class FabricReplay extends AbstractReplay {
     void abandon() {
         ReplayController c = ReplayController.current();
         if (c != null && c.replay == this) c.close();
-        Minecraft.getInstance().options.hideGui = hideGuiBefore;
+        Compat.setHideGui(hideGuiBefore);
         closeChannel();
     }
 
@@ -190,6 +190,21 @@ public final class FabricReplay extends AbstractReplay {
             }
         }
         return track == null ? null : track.selfAt(t);
+    }
+
+    /** The fake connection's state, for the in-game test's log. */
+    String debugState() {
+        EmbeddedChannel ch = channel;
+        if (ch == null) return "no channel";
+        String listener;
+        try {
+            listener = connection == null ? "none" : connection.getPacketListener().getClass().getSimpleName();
+        } catch (RuntimeException e) {
+            listener = "none";
+        }
+        return "fed " + fed + " packets, channel open " + ch.isOpen() + ", autoRead " + ch.config().isAutoRead()
+                + ", pipeline " + ch.pipeline().names() + ", unhandled " + ch.inboundMessages().size()
+                + ", listener " + listener;
     }
 
     boolean worldReady() {

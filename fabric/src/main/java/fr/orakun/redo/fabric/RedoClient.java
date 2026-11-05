@@ -25,7 +25,6 @@ import io.netty.buffer.Unpooled;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.multiplayer.ServerData;
@@ -80,16 +79,16 @@ public final class RedoClient {
     }
 
     private static boolean keyDown(int key) {
-        return key >= 0 && InputConstants.isKeyDown(Minecraft.getInstance().getWindow(), key);
+        return key >= 0 && Compat.keyDown(key);
     }
 
     /** Current modifier keys as {@link Keys} flags. */
     public static int modifiers() {
         Window w = Minecraft.getInstance().getWindow();
         int m = 0;
-        if (InputConstants.isKeyDown(w, Keys.LEFT_SHIFT) || InputConstants.isKeyDown(w, Keys.RIGHT_SHIFT)) m |= Keys.MOD_SHIFT;
-        if (InputConstants.isKeyDown(w, Keys.LEFT_CONTROL) || InputConstants.isKeyDown(w, Keys.RIGHT_CONTROL)) m |= Keys.MOD_CONTROL;
-        if (InputConstants.isKeyDown(w, Keys.LEFT_ALT) || InputConstants.isKeyDown(w, Keys.RIGHT_ALT)) m |= Keys.MOD_ALT;
+        if (Compat.keyDown(Keys.LEFT_SHIFT) || Compat.keyDown(Keys.RIGHT_SHIFT)) m |= Keys.MOD_SHIFT;
+        if (Compat.keyDown(Keys.LEFT_CONTROL) || Compat.keyDown(Keys.RIGHT_CONTROL)) m |= Keys.MOD_CONTROL;
+        if (Compat.keyDown(Keys.LEFT_ALT) || Compat.keyDown(Keys.RIGHT_ALT)) m |= Keys.MOD_ALT;
         return m;
     }
 
@@ -110,7 +109,7 @@ public final class RedoClient {
 
             @Override
             public void close() {
-                Minecraft.getInstance().setScreen(parent);
+                Compat.setScreen(parent);
             }
 
             @Override
@@ -121,20 +120,20 @@ public final class RedoClient {
         return new RedoScreen(view, new Runnable() {
             @Override
             public void run() {
-                Minecraft.getInstance().setScreen(parent);
+                Compat.setScreen(parent);
             }
         });
     }
 
     public static void openRecordings(Screen parent) {
-        Minecraft.getInstance().setScreen(recordingsScreen(parent));
+        Compat.setScreen(recordingsScreen(parent));
     }
 
     static Screen message(String text, final Screen back) {
         return new RedoScreen(new MessageView("Redo", text, true, back == null ? null : new Runnable() {
             @Override
             public void run() {
-                Minecraft.getInstance().setScreen(back);
+                Compat.setScreen(back);
             }
         }), null);
     }
@@ -153,14 +152,14 @@ public final class RedoClient {
         final Screen list = recordingsScreen(parent);
         String problem = incompatibility(archive.meta);
         if (problem != null) {
-            mc.setScreen(message(problem, list));
+            Compat.setScreen(message(problem, list));
             return;
         }
         if (mc.level != null) {
-            mc.setScreen(message("Quitte d'abord le monde pour ouvrir un enregistrement.", list));
+            Compat.setScreen(message("Quitte d'abord le monde pour ouvrir un enregistrement.", list));
             return;
         }
-        mc.setScreen(new RedoScreen(new MessageView("Redo", "Chargement de l'enregistrement…", true, new Runnable() {
+        Compat.setScreen(new RedoScreen(new MessageView("Redo", "Chargement de l'enregistrement…", true, new Runnable() {
             @Override
             public void run() {
                 FabricReplay r = replay();
@@ -171,7 +170,7 @@ public final class RedoClient {
         lastTimerMs = -1;
         tickAcc = 0;
         if (ReplayController.open(new FabricReplay(archive)) == null) {
-            mc.setScreen(message("Impossible d'ouvrir cet enregistrement (voir le journal du jeu).", list));
+            Compat.setScreen(message("Impossible d'ouvrir cet enregistrement (voir le journal du jeu).", list));
         }
     }
 
@@ -179,7 +178,7 @@ public final class RedoClient {
     static void fail(String text) {
         FabricReplay r = replay();
         if (r != null) r.exit();
-        Minecraft.getInstance().setScreen(message(text, recordingsScreen(new TitleScreen())));
+        Compat.setScreen(message(text, recordingsScreen(new TitleScreen())));
     }
 
     // ------------------------------------------------------------------ game loop
@@ -201,14 +200,14 @@ public final class RedoClient {
             c.frameStart();
             if (ReplayController.current() != c) return;
             if (r.worldReady()) {
-                Screen s = mc.screen;
+                Screen s = Compat.screen();
                 if (!(s instanceof RedoScreen) || !(((RedoScreen) s).view instanceof EditorView)) {
                     EditorView v = c.editor(HOST);
                     if (v == null) {
                         fail(c.error() == null ? "Impossible d'ouvrir l'éditeur." : c.error());
                         return;
                     }
-                    mc.setScreen(new RedoScreen(v, null));
+                    Compat.setScreen(new RedoScreen(v, null));
                 }
             }
         } catch (RuntimeException e) {
@@ -237,7 +236,7 @@ public final class RedoClient {
         if (busy > 0 || replayActive()) return;
         Recorder.tick(FabricTrackSource.INSTANCE);
         Minecraft mc = Minecraft.getInstance();
-        boolean free = mc.screen == null && Recorder.isRecording();
+        boolean free = Compat.screen() == null && Recorder.isRecording();
         boolean h = free && keyDown(Redo.config().keyHighlight);
         if (h && !highlightWasDown) Recorder.toggleHighlight();
         highlightWasDown = h;
@@ -310,7 +309,7 @@ public final class RedoClient {
         if (d == null || !d.captureThisFrame()) return;
         final ExportJob job = d.job;
         d.captured();
-        Screenshot.takeScreenshot(Minecraft.getInstance().getMainRenderTarget(), image -> {
+        Screenshot.takeScreenshot(Compat.mainTarget(), image -> {
             try {
                 submitFrame(job, image);
             } catch (RuntimeException e) {
@@ -344,10 +343,10 @@ public final class RedoClient {
     }
 
     /** Draws the recording indicator on the game's interface. */
-    public static void renderHud(GuiGraphics g) {
+    public static void renderHud(FabricGfx g) {
         if (replayActive()) return;
-        if (Minecraft.getInstance().options.hideGui) return;
-        RecorderHud.render(new FabricGfx(g));
+        if (Compat.hideGui()) return;
+        RecorderHud.render(g);
     }
 
     /** Replaces the local player's movement during a replay. Returns true if handled. */
@@ -363,7 +362,7 @@ public final class RedoClient {
             p.setYBodyRot(s.bodyYaw);
             p.setShiftKeyDown((s.flags & EntitySample.SNEAK) != 0);
             p.setSprinting((s.flags & EntitySample.SPRINT) != 0);
-            if ((s.actions & SelfSample.SWING) != 0 && !p.swinging) p.swing(InteractionHand.MAIN_HAND);
+            if ((s.actions & SelfSample.SWING) != 0 && !Compat.swinging(p)) Compat.swing(p);
         }
         p.calculateEntityAnimation(false);
         return true;
@@ -474,6 +473,6 @@ public final class RedoClient {
     }
 
     static void openFolder(File f) {
-        Util.getPlatform().openFile(f);
+        Compat.openFile(f);
     }
 }

@@ -1,7 +1,11 @@
 package fr.orakun.redo.fabric;
 
 import fr.orakun.redo.core.ui.View;
+//? if >=26.1 {
+/*import net.minecraft.client.gui.GuiGraphicsExtractor;
+*///?} else {
 import net.minecraft.client.gui.GuiGraphics;
+//?}
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
@@ -22,7 +26,11 @@ public final class RedoScreen extends Screen {
     }
 
     @Override
+    //? if >=26.1 {
+    /*public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partial) {
+    *///?} else {
     public void render(GuiGraphics g, int mouseX, int mouseY, float partial) {
+    //?}
         long now = System.nanoTime();
         double dt = (now - lastFrame) / 1_000_000.0;
         lastFrame = now;
@@ -30,7 +38,11 @@ public final class RedoScreen extends Screen {
     }
 
     @Override
+    //? if >=26.1 {
+    /*public void extractBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float partial) {
+    *///?} else {
     public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partial) {
+    //?}
         // the replay world stays visible behind the editor; the list paints its own background
     }
 

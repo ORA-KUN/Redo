@@ -21,13 +21,13 @@ final class FabricEditorHost implements EditorHost {
     @Override
     public void openFolder(File folder) {
         folder.mkdirs();
-        Util.getPlatform().openFile(folder);
+        Compat.openFile(folder);
     }
 
     static boolean down(KeyMapping k) {
         InputConstants.Key key = ((KeyMappingAccessor) k).redo$key();
         if (key == null || key.getType() != InputConstants.Type.KEYSYM || key.getValue() < 0) return false;
-        return InputConstants.isKeyDown(Minecraft.getInstance().getWindow(), key.getValue());
+        return Compat.keyDown(key.getValue());
     }
 
     @Override
@@ -47,14 +47,12 @@ final class FabricEditorHost implements EditorHost {
 
     @Override
     public int framebufferWidth() {
-        RenderTarget t = Minecraft.getInstance().getMainRenderTarget();
-        return t.width;
+        return Compat.frameWidth();
     }
 
     @Override
     public int framebufferHeight() {
-        RenderTarget t = Minecraft.getInstance().getMainRenderTarget();
-        return t.height;
+        return Compat.frameHeight();
     }
 
     @Override

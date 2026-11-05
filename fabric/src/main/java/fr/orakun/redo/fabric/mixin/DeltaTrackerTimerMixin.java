@@ -10,11 +10,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /** During a replay, Redo decides how many ticks run and where frames sit between them. */
 @Mixin(DeltaTracker.Timer.class)
 public abstract class DeltaTrackerTimerMixin {
+    //? if >=26.1 {
+    /*@Inject(method = "advanceGameTime", at = @At("RETURN"), cancellable = true)
+    private void redo$ticks(long nowMs, CallbackInfoReturnable<Integer> cir) {
+        int ticks = RedoClient.replayTicks(nowMs);
+        if (ticks >= 0) cir.setReturnValue(ticks);
+    }
+    *///?} else {
     @Inject(method = "advanceTime", at = @At("RETURN"), cancellable = true)
     private void redo$ticks(long nowMs, boolean advanceGameTime, CallbackInfoReturnable<Integer> cir) {
         int ticks = RedoClient.replayTicks(nowMs);
         if (ticks >= 0) cir.setReturnValue(ticks);
     }
+    //?}
 
     @Inject(method = "getGameTimeDeltaPartialTick", at = @At("RETURN"), cancellable = true)
     private void redo$partial(boolean ignoreFrozenGame, CallbackInfoReturnable<Float> cir) {
