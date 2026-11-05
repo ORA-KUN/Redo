@@ -36,3 +36,9 @@ net.minecraftforge.fml.common.network.internal.FMLNetworkHandler :: public
 # Round 8: no loading screen while the replay world is rebuilt
 net.minecraft.client.LoadingScreenRenderer :: setLoadingProgress|displayString|resetProgressAndMessage|displayLoadingString
 code net.minecraft.client.Minecraft :: loadWorld\(Lnet
+# Round 9: keeping the last image on screen while the replay world is rebuilt
+net.minecraft.client.renderer.RenderGlobal :: hasNoChunkUpdates|chunksToUpdate|renderDispatcher|getDebugInfoRenders|displayListEntitiesDirty
+net.minecraft.client.renderer.chunk.ChunkRenderDispatcher :: public
+net.minecraft.client.renderer.OpenGlHelper :: [Ff]ramebuffer|GL_FRAMEBUFFER|glBindFramebuffer|framebufferType
+code net.minecraft.client.renderer.RenderGlobal :: hasNoChunkUpdates
+code net.minecraft.client.renderer.chunk.ChunkRenderDispatcher :: hasChunkUpdates|hasNoChunkUpdates
