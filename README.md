@@ -8,18 +8,19 @@ Redo s'inspire de ce que font Flashback et le replay de Lunar Client, sans repre
 
 | Minecraft | Chargeur | État |
 |---|---|---|
-| 1.8.9 | Forge 11.15.1.2318 | compilé par la CI, testé en jeu par la CI |
-| 1.21.11 | Fabric Loader 0.17+ (sans Fabric API) | compilé par la CI, testé en jeu par la CI |
-| 26.1, 26.2, 26.3 | Fabric | portage en cours : ces versions ont changé le rendu de l'interface et l'écran courant |
+| 1.8.9 | Forge 11.15.1.2318 | compilé et testé en jeu par la CI |
+| 1.21.11 | Fabric Loader 0.17+ (sans Fabric API) | compilé et testé en jeu par la CI |
+| 26.1, 26.2 | Fabric Loader 0.17+ (sans Fabric API) | compilés et testés en jeu par la CI |
+| 26.3 | Fabric Loader 0.17+ (sans Fabric API) | compilé par la CI ; le test en jeu ne démarre pas encore sur l'écran virtuel de la CI (nouveau moteur de rendu de 26.3) |
 
 Un enregistrement se relit avec la version de Minecraft qui l'a fait (le format des paquets change d'une version à l'autre).
 
 ## Installation
 
 - **1.8.9** : mets `redo-<version>.jar` dans `.minecraft/mods` avec Forge 1.8.9.
-- **1.21.11** : installe Fabric Loader, puis mets `redo-<version>+1.21.11.jar` dans `.minecraft/mods`. Fabric API n'est pas nécessaire.
+- **1.21.11, 26.1, 26.2, 26.3** : installe Fabric Loader, puis mets le jar de ta version (`redo-<version>+1.21.11.jar`, `redo-<version>+26.1.jar`…) dans `.minecraft/mods`. Fabric API n'est pas nécessaire.
 
-Les jars sont produits par la CI (onglet Actions du dépôt, artefacts `redo-1.8.9` et `redo-1.21.11`).
+Les jars sont produits par la CI (onglet Actions du dépôt, un artefact `redo-<version de Minecraft>` par version).
 
 ## Utilisation
 
@@ -66,14 +67,16 @@ Le champ en bas de l'éditeur accepte une demande en français ou en anglais, pu
 - En 1.8.9, revenir en arrière recharge le monde enregistré depuis le début, ce qui recharge aussi le pack de ressources du serveur s'il y en a un.
 - Juste après un saut dans le temps, les entités se recalent sur leur position au lieu de glisser jusqu'à elle.
 - Les paquets propres aux mods du serveur sont rejoués tels quels : ce qu'ils affichent n'apparaît que si le même mod est installé.
+- Un enregistrement commence pendant la connexion au serveur : le début de la timeline (avant l'arrivée dans le monde) reste figé sur la première image du monde.
+- En 26.3, le coup de bras de ton propre joueur n'est pas rejoué (les autres joueurs, si).
 
 ## Développement
 
 - `core/` : tout ce qui ne dépend pas de Minecraft (format `.redo`, enregistreur, analyse des moments, plans automatiques, bande-annonce, éditeur et interface, export ffmpeg, prompt). Java 8, tests JUnit : `cd core && ./gradlew test`.
 - `forge-1.8.9/` : adaptateur 1.8.9 (Forge + Mixin). `cd forge-1.8.9 && ./gradlew build`.
-- `fabric/` : adaptateur des versions récentes (Fabric + Mixin, Stonecutter pour les variantes de version). `cd fabric && ./gradlew :1.21.11:buildAndCollect`.
+- `fabric/` : adaptateur des versions récentes (Fabric + Mixin, Stonecutter pour les variantes de version ; ce qui change d'une version à l'autre est regroupé dans `Compat.java`). `cd fabric && ./gradlew :1.21.11:buildAndCollect` (ou `:26.1:`, `:26.2:`, `:26.3:`).
 
-La CI (`.github/workflows/build.yml`) compile chaque version, lance les tests du cœur, puis fait un vrai test en jeu pour 1.8.9 et 1.21.11 : elle démarre un serveur vanilla de test (dont elle accepte l'EULA de Minecraft, le temps du job), lance le client sous un écran virtuel, enregistre quelques secondes pendant que le serveur fait apparaître des animaux et construit une tour, puis rouvre l'enregistrement, le lit, revient en arrière, exporte la bande-annonce et quitte. Les captures d'écran, les journaux et la vidéo sont dans l'artefact `e2e-<version>` du job.
+La CI (`.github/workflows/build.yml`) compile chaque version, lance les tests du cœur, puis fait un vrai test en jeu pour chaque version : elle démarre un serveur vanilla de test (dont elle accepte l'EULA de Minecraft, le temps du job), lance le client sous un écran virtuel, enregistre quelques secondes pendant que le serveur fait apparaître des animaux et construit une tour, puis rouvre l'enregistrement, le lit, revient en arrière, exporte la bande-annonce et quitte. Les captures d'écran, les journaux et la vidéo sont dans l'artefact `e2e-<version>` du job.
 
 ## Licence
 

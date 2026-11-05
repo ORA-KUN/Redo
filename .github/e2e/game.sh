@@ -128,6 +128,9 @@ simulationDistance:6
 soundCategory_master:0.0
 EOF
 chmod +x gradlew
+# 26.3 opens its window with SDL: let it pick an EGL config (its strict GLX visual match finds
+# none on the virtual display); the Vulkan fallback runs on Mesa's software driver.
+export SDL_VIDEO_FORCE_EGL=1
 REDO_E2E=1 timeout 1500 xvfb-run -a -s "-screen 0 1280x720x24" \
     ./gradlew "$TASK" --console=plain --args="$CLIENT_ARGS" 2>&1 | tee "$OUT/client-console.log"
 echo "client exited with ${PIPESTATUS[0]}"

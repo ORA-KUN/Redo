@@ -18,8 +18,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.PacketFlow;
 
 import java.io.File;
-import java.lang.reflect.Field;
-import java.util.Collection;
 import java.util.List;
 
 /**
@@ -342,32 +340,7 @@ final class E2E {
             s += ", time " + (long) c.replay.timeMs() + " ms, seeking " + c.replay.isSeeking() + ", paused " + c.replay.isPaused();
             if (c.replay instanceof FabricReplay) s += ", " + ((FabricReplay) c.replay).debugState();
         }
-        return s + ", " + processorState();
-    }
-
-    /** Test only: how many packets wait in the game's packet processor (found by reflection). */
-    private static String processorState() {
-        Minecraft mc = Minecraft.getInstance();
-        try {
-            for (Class<?> type = mc.getClass(); type != null; type = type.getSuperclass()) {
-                for (Field f : type.getDeclaredFields()) {
-                    if (!f.getType().getSimpleName().equals("PacketProcessor")) continue;
-                    f.setAccessible(true);
-                    Object p = f.get(mc);
-                    int queued = -1;
-                    for (Field q : p.getClass().getDeclaredFields()) {
-                        if (Collection.class.isAssignableFrom(q.getType())) {
-                            q.setAccessible(true);
-                            queued = ((Collection<?>) q.get(p)).size();
-                        }
-                    }
-                    return "packet processor: " + queued + " queued";
-                }
-            }
-            return "no packet processor";
-        } catch (Exception e) {
-            return "packet processor not readable: " + e;
-        }
+        return s;
     }
 
     private static int countEntities(Minecraft mc) {

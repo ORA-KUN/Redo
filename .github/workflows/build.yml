@@ -130,7 +130,7 @@ jobs:
       - name: Install a virtual display, software OpenGL and ffmpeg
         run: |
           sudo apt-get update -q
-          sudo apt-get install -yq xvfb x11-xserver-utils libgl1-mesa-dri libglx-mesa0 libegl1 libxrandr2 libxcursor1 libxi6 libxinerama1 libxxf86vm1 ffmpeg jq
+          sudo apt-get install -yq xvfb x11-xserver-utils libgl1-mesa-dri libglx-mesa0 libegl1 libxrandr2 libxcursor1 libxi6 libxinerama1 libxxf86vm1 mesa-vulkan-drivers ffmpeg jq
       - name: Join a test server, record, replay and export
         run: bash .github/e2e/game.sh ${{ matrix.loader }} ${{ matrix.mc }}
       - name: Upload screenshots, logs and the recording
