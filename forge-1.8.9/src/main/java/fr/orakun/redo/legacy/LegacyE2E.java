@@ -39,7 +39,7 @@ import java.util.List;
 final class LegacyE2E {
     static final boolean ENABLED = Boolean.getBoolean("redo.e2e");
 
-    private enum Step { JOIN, RECORD, LEAVE, OPEN, EDITOR, PLAY, SEEK, EXPORT, SCENERY, EXIT, DONE }
+    private enum Step { JOIN, RECORD, LEAVE, OPEN, EDITOR, PLAY, SEEK, SCRUB, EXPORT, SCENERY, EXIT, DONE }
 
     private static Step step = Step.JOIN;
     private static int ticks;
@@ -56,6 +56,7 @@ final class LegacyE2E {
     private static String editorLostTo = "";
     private static long seekTo;
     private static boolean promptSent;
+    private static int scrubFrom = -1, scrubHeld;
     private static int promptTicks;
     private static File recording;
 
@@ -120,13 +121,14 @@ final class LegacyE2E {
         if (img == null) return true;
         int px = UiScale.pixels(img.getWidth(), img.getHeight());
         int found = 0;
-        int[] xs = {2, 60, 110};
+        // the right end too: an editor drawn shrunk in a corner leaves it to the world
+        int[] xs = {2, 60, 110, img.getWidth() / px - 4};
         for (int ux : xs) {
             int c = img.getRGB(Math.min(img.getWidth() - 1, ux * px), px);
             if (close(c, Theme.HEADER)) found++;
         }
         log("editor top bar found at " + found + " of " + xs.length + " points");
-        return found >= 2;
+        return found >= 3;
     }
 
     /** Mean difference of the middle of two screenshots (0 = same picture), or -1. */
@@ -399,9 +401,56 @@ final class LegacyE2E {
                     }
                     shot("free-camera");
                     c.session().setMode(EditorSession.Mode.MONTAGE);
-                    next(Step.EXPORT);
+                    next(Step.SCRUB);
                 } else if (ticks > 20 * 60) {
                     fail("backward seek did not finish");
+                }
+                break;
+            }
+            case SCRUB: {
+                // the playhead dragged along the timeline in the Montage view, then dropped back near
+                // the start: the world follows live while dragging forward, and a jump back keeps
+                // the last image (never a frame of the editor drawn shrunk in a corner)
+                ReplayController c = ReplayController.current();
+                AbstractReplay r = c.replay;
+                EditorSession s = c.session();
+                if (ticks == 1) {
+                    s.setMode(EditorSession.Mode.MONTAGE);
+                    if (s.playing) s.togglePlay();
+                    s.setPlayhead(0);
+                    scrubFrom = -1;
+                }
+                if (scrubFrom < 0) {
+                    if (ticks > 10 && !r.isSeeking() && !r.isHoldingImage()) scrubFrom = ticks;
+                    else if (ticks > 20 * 60) fail("the replay did not settle before dragging the playhead");
+                    return;
+                }
+                int k = ticks - scrubFrom;
+                if (k < 24) {
+                    s.scrubbing = true;
+                    s.setPlayhead(Math.min(s.playheadMs + 150, Math.max(0, s.sequence.duration() - 1)));
+                    if (r.isHoldingImage()) scrubHeld++;
+                    return;
+                }
+                if (k == 24) {
+                    log("dragged the playhead to " + (long) s.playheadMs + " ms (replay at " + (long) r.timeMs() + " ms), picture frozen "
+                            + scrubHeld + " times while dragging");
+                    s.scrubbing = false;
+                    s.setPlayhead(100);
+                    return;
+                }
+                if (k > 34 && !r.isSeeking() && !r.isHoldingImage() && r.worldSettled()) {
+                    if (scrubHeld > 0) {
+                        fail("the picture froze while the playhead was dragged forward (" + scrubHeld + " times)");
+                        return;
+                    }
+                    if (!editorDrawn(shot("after-scrub"))) {
+                        fail("the editor is not drawn whole after dragging the playhead");
+                        return;
+                    }
+                    next(Step.EXPORT);
+                } else if (k > 20 * 60) {
+                    fail("the replay did not settle after dragging the playhead");
                 }
                 break;
             }

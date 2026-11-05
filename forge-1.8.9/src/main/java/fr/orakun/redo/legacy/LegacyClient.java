@@ -345,9 +345,10 @@ public final class LegacyClient {
     public static void worldRendered() {
         ReplayController c = ReplayController.current();
         if (c == null) return;
-        // the last image of the world, kept on screen during the next jump
+        // the last image of the world, kept on screen during the next jump back: copied only
+        // from a settled world, never from one still being rebuilt
         LegacyReplay r = replay();
-        if (r != null && !r.isHoldingImage() && !r.isExporting() && editorShown()) FrozenImage.capture();
+        if (r != null && r.worldSettled() && editorShown()) FrozenImage.capture();
         ExportDriver d = c.export();
         if (d == null || !d.captureThisFrame()) return;
         ExportJob job = d.job;

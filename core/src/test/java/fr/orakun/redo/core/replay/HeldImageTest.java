@@ -121,7 +121,9 @@ class HeldImageTest {
         r.terrain = false;
         r.seek(3000);
         assertTrue(r.isHoldingImage(), "the image is kept as soon as the jump starts");
-        assertEquals(1, r.worldsClosed, "an image copied with every frame lets the world be rebuilt at once");
+        assertEquals(0, r.worldsClosed, "never rebuilt inside seek: the editor asks for jumps while it draws");
+        r.frame();
+        assertEquals(1, r.worldsClosed, "rebuilt at the start of the next frame");
         for (int i = 0; i < 10; i++) r.frame();
         assertFalse(r.isSeeking());
         assertTrue(r.isHoldingImage(), "still kept while the terrain is being built");
@@ -151,15 +153,50 @@ class HeldImageTest {
     }
 
     @Test
-    void aShortStepForwardNeedsNoImage() throws Exception {
+    void draggingForwardShowsTheWorldLive() throws Exception {
         FakeReplay r = startedAt(new FakeReplay(archive()), 10000);
-        r.seek(10100);
-        assertFalse(r.isHoldingImage());
-        r.seek(15000);
-        assertTrue(r.isHoldingImage(), "a long jump forward fast-forwards the world: kept too");
-        for (int i = 0; i < 100 && (r.isSeeking() || r.isHoldingImage()); i++) r.frame();
-        assertEquals(15000, (long) r.timeMs());
+        // the playhead dragged forward: a seek every few frames, the world follows on screen
+        for (long t = 10300; t <= 16000; t += 300) {
+            r.seek(t);
+            assertFalse(r.isHoldingImage(), "no frozen image while dragging forward");
+            r.frame();
+            r.frame();
+            assertEquals(t, (long) r.timeMs());
+        }
         assertEquals(1, r.worldsOpened, "forward jumps never rebuild the world");
+    }
+
+    @Test
+    void jumpsBackAskedWhileHoldingWaitForTheNextFrame() throws Exception {
+        FakeReplay r = startedAt(new FakeReplay(archive()), 10000);
+        r.terrain = false;
+        r.seek(6000);
+        r.frame();
+        assertEquals(1, r.worldsClosed);
+        for (int i = 0; i < 20; i++) r.frame();
+        assertTrue(r.isHoldingImage());
+        // released again further back while the first image is still kept
+        r.seek(2000);
+        assertEquals(1, r.worldsClosed, "not rebuilt inside seek, even while an image is kept");
+        r.seek(2500);
+        r.frame();
+        assertEquals(2, r.worldsClosed, "once, at the start of the frame, for the last aim");
+        r.terrain = true;
+        for (int i = 0; i < 100 && (r.isSeeking() || r.isHoldingImage()); i++) r.frame();
+        assertEquals(2500, (long) r.timeMs());
+    }
+
+    @Test
+    void theImageIsCopiedOnlyFromASettledWorld() throws Exception {
+        FakeReplay r = startedAt(new FakeReplay(archive()), 10000);
+        for (int i = 0; i < 10; i++) r.frame();
+        assertTrue(r.worldSettled());
+        r.seek(4000);
+        assertFalse(r.worldSettled());
+        for (int i = 0; i < 100 && (r.isSeeking() || r.isHoldingImage()); i++) r.frame();
+        assertFalse(r.worldSettled(), "a few frames after the jump first");
+        for (int i = 0; i < 10; i++) r.frame();
+        assertTrue(r.worldSettled());
     }
 
     @Test
@@ -168,6 +205,7 @@ class HeldImageTest {
         r.capture = AbstractReplay.ImageCapture.NONE;
         r.seek(3000);
         assertFalse(r.isHoldingImage());
+        r.frame();
         assertEquals(1, r.worldsClosed);
     }
 }

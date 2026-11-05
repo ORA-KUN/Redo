@@ -32,6 +32,9 @@ import java.util.Locale;
  * prompt bar and timeline at the bottom. Platform screens forward drawing and input here.
  */
 public final class EditorView implements View {
+    /** When the replay started its current jump, or -1 (for the loading notice). */
+    private long seekingSince = -1;
+
     private static final String[] FILTERS = {"Tous", "Auto", "Prompt", "Libres", "★"};
     private static final String[] FILTER_TIPS = {"Tous les plans", "Plans trouvés par le réalisateur automatique",
             "Plans créés avec le prompt", "Plans faits en caméra libre", "Plans favoris (☆ sur un plan)"};
@@ -969,7 +972,12 @@ public final class EditorView implements View {
 
     private void renderViewportOverlay(Gfx g) {
         if (s.analysing) Widget.centered(g, "Le réalisateur analyse la partie…", vpX + vpW / 2, vpY + vpH / 2, Theme.TEXT);
-        if (s.backend.isSeeking() || s.backend.isHoldingImage()) {
+        // a quick step (dragging the playhead forward) needs no notice: only a jump that takes a while
+        boolean seeking = s.backend.isSeeking();
+        long now = System.currentTimeMillis();
+        if (!seeking) seekingSince = -1;
+        else if (seekingSince < 0) seekingSince = now;
+        if (s.backend.isHoldingImage() || (seeking && now - seekingSince > 300)) {
             String t = "Chargement" + spinner();
             int tw = g.textWidth("Chargement...");
             g.fill(vpX + vpW / 2 - tw / 2 - 5, vpY + 5, vpX + vpW / 2 + tw / 2 + 5, vpY + 18, 0xB0000000);
