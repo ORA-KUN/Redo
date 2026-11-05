@@ -32,7 +32,12 @@ public final class LegacyEvents {
     /** 1.8.9 draws the game interface under any open screen, even hidden: not over the replay. */
     @SubscribeEvent
     public void onOverlayPre(RenderGameOverlayEvent.Pre e) {
-        if (e.type == RenderGameOverlayEvent.ElementType.ALL && LegacyClient.replayActive()) e.setCanceled(true);
+        if (e.type == RenderGameOverlayEvent.ElementType.ALL && LegacyClient.replayActive()) {
+            // the game sets up its 2D projection inside the overlay, and the Redo screen drawn just
+            // after it needs that projection: without it the editor is drawn in the 3D view, unseen
+            Minecraft.getMinecraft().entityRenderer.setupOverlayRendering();
+            e.setCanceled(true);
+        }
     }
 
     @SubscribeEvent

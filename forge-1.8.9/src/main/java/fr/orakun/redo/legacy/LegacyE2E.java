@@ -9,6 +9,8 @@ import fr.orakun.redo.core.record.Recorder;
 import fr.orakun.redo.core.replay.AbstractReplay;
 import fr.orakun.redo.core.replay.ReplayController;
 import fr.orakun.redo.core.ui.RecordingsView;
+import fr.orakun.redo.core.ui.Theme;
+import fr.orakun.redo.core.ui.UiScale;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiIngameMenu;
@@ -63,7 +65,7 @@ final class LegacyE2E {
         ticks = 0;
     }
 
-    private static void shot(String name) {
+    private static BufferedImage shot(String name) {
         Minecraft mc = Minecraft.getMinecraft();
         String file = String.format("e2e-%02d-%s.png", ++shots, name);
         ScreenShotHelper.saveScreenshot(mc.mcDataDir, file, mc.displayWidth, mc.displayHeight, mc.getFramebuffer());
@@ -80,9 +82,35 @@ final class LegacyE2E {
                 }
             }
             log("screenshot " + file + " " + img.getWidth() + "x" + img.getHeight() + ", mean brightness " + (n == 0 ? 0 : sum / n) + "/255");
+            return img;
         } catch (Exception e) {
             log("screenshot " + file + " not readable: " + e);
+            return null;
         }
+    }
+
+    /**
+     * True if the editor's top bar shows in the screenshot (its color at the top left), so an
+     * editor that is open but drawn nowhere fails the test.
+     */
+    private static boolean editorDrawn(BufferedImage img) {
+        if (img == null) return true;
+        int px = UiScale.pixels(img.getWidth(), img.getHeight());
+        int found = 0;
+        int[] xs = {2, 60, 110};
+        for (int ux : xs) {
+            int c = img.getRGB(Math.min(img.getWidth() - 1, ux * px), px);
+            if (close(c, Theme.HEADER)) found++;
+        }
+        log("editor top bar found at " + found + " of " + xs.length + " points");
+        return found >= 2;
+    }
+
+    private static boolean close(int a, int b) {
+        for (int sh = 0; sh <= 16; sh += 8) {
+            if (Math.abs(((a >> sh) & 0xFF) - ((b >> sh) & 0xFF)) > 12) return false;
+        }
+        return true;
     }
 
     /** What the replay is doing, for the log. */
@@ -253,7 +281,10 @@ final class LegacyE2E {
                             + (int) mc.thePlayer.posZ + ", " + mc.theWorld.loadedEntityList.size() + " entities, sequence of "
                             + (s == null ? -1 : s.sequence.clips.size()) + " clips, " + (s == null ? -1 : s.edit.suggestions.size())
                             + " suggested shots");
-                    shot("editor");
+                    if (!editorDrawn(shot("editor"))) {
+                        fail("the editor is open but its interface is not drawn");
+                        return;
+                    }
                     if (s == null || s.edit.suggestions.isEmpty() || s.sequence.clips.isEmpty()) {
                         fail("the automatic analysis proposed no shot or no trailer (see \"Analysis failed\" above)");
                         return;

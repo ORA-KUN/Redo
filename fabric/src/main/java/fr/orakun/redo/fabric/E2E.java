@@ -9,6 +9,8 @@ import fr.orakun.redo.core.record.Recorder;
 import fr.orakun.redo.core.replay.AbstractReplay;
 import fr.orakun.redo.core.replay.ReplayController;
 import fr.orakun.redo.core.ui.RecordingsView;
+import fr.orakun.redo.core.ui.Theme;
+import fr.orakun.redo.core.ui.UiScale;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -64,11 +66,30 @@ final class E2E {
     }
 
     /** Saves a screenshot and logs its mean brightness, so a black or empty frame shows in the log. */
+    /** Result of the check of the editor screenshot: 0 pending, 1 drawn, 2 not drawn. */
+    private static volatile int editorCheck;
+
     private static void shot(String name) {
+        shot(name, false);
+    }
+
+    private static void shot(String name, final boolean checkEditor) {
         Minecraft mc = Minecraft.getInstance();
         String file = String.format("e2e-%02d-%s.png", ++shots, name);
         Screenshot.takeScreenshot(Compat.mainTarget(), image -> {
             try {
+                if (checkEditor) {
+                    // the editor's top bar, at the top left: an editor open but drawn nowhere fails
+                    int px = UiScale.pixels(image.getWidth(), image.getHeight());
+                    int found = 0;
+                    int[] xs = {2, 60, 110};
+                    for (int ux : xs) {
+                        int c = image.getPixel(Math.min(image.getWidth() - 1, ux * px), px);
+                        if (close(c, Theme.HEADER) || close(swapRB(c), Theme.HEADER)) found++;
+                    }
+                    log("editor top bar found at " + found + " of " + xs.length + " points");
+                    editorCheck = found >= 2 ? 1 : 2;
+                }
                 long sum = 0;
                 int n = 0;
                 for (int y = 0; y < image.getHeight(); y += 8) {
@@ -89,6 +110,17 @@ final class E2E {
                 image.close();
             }
         });
+    }
+
+    private static boolean close(int a, int b) {
+        for (int sh = 0; sh <= 16; sh += 8) {
+            if (Math.abs(((a >> sh) & 0xFF) - ((b >> sh) & 0xFF)) > 12) return false;
+        }
+        return true;
+    }
+
+    private static int swapRB(int c) {
+        return (c & 0xFF00FF00) | ((c >> 16) & 0xFF) | ((c & 0xFF) << 16);
     }
 
     /**
@@ -260,7 +292,8 @@ final class E2E {
                             + (int) mc.player.getZ() + ", " + countEntities(mc) + " entities, sequence of "
                             + (s == null ? -1 : s.sequence.clips.size()) + " clips, " + (s == null ? -1 : s.edit.suggestions.size())
                             + " suggested shots");
-                    shot("editor");
+                    editorCheck = 0;
+                    shot("editor", true);
                     if (s == null || s.edit.suggestions.isEmpty() || s.sequence.clips.isEmpty()) {
                         fail("the automatic analysis proposed no shot or no trailer (see \"Analysis failed\" above)");
                         return;
@@ -283,8 +316,13 @@ final class E2E {
                     s.setPlayhead(0);
                     if (!s.playing) s.togglePlay();
                 }
+                if (ticks == 20 && editorCheck == 2) {
+                    fail("the editor is open but its interface is not drawn");
+                    return;
+                }
                 if (ticks == 20 * 3) shot("playing");
                 if (ticks == 20 * 5) {
+                    if (editorCheck == 0) log("editor screenshot not checked (no picture yet)");
                     log("replay time after 5 s of playback: " + (long) c.replay.timeMs() + " ms");
                     if (s.playing) s.togglePlay();
                     next(Step.SEEK);
