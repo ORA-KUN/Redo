@@ -77,3 +77,29 @@ jobs:
         with:
           name: redo-${{ matrix.mc }}
           path: fabric/build/libs/*/*.jar
+
+  e2e-fabric:
+    name: Redo 1.21.11 in-game test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            21
+            25
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install a virtual display, software OpenGL and ffmpeg
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -yq xvfb libgl1-mesa-dri libglx-mesa0 libegl1 libxrandr2 libxcursor1 libxi6 libxinerama1 libxxf86vm1 ffmpeg jq
+      - name: Join a test server, record, replay and export
+        run: bash .github/e2e/fabric.sh 1.21.11
+      - name: Upload screenshots, logs and the recording
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-1.21.11
+          path: e2e-out/

@@ -186,6 +186,7 @@ public final class RedoClient {
 
     /** Start of a frame, before the tick timer runs. */
     public static void frameStart() {
+        if (E2E.ENABLED && busy == 0) E2E.frame();
         if (busy > 0) return;
         FabricReplay r = replay();
         if (r == null) return;

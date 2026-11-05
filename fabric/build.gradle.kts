@@ -32,6 +32,8 @@ loom {
         preferGradleTask = true
         generateRunConfig = true
         runDirectory = rootProject.file("run")
+        // CI in-game test (see E2E.java): REDO_E2E=1 ./gradlew :1.21.11:runClient
+        if (System.getenv("REDO_E2E") != null) vmArg("-Dredo.e2e=true")
     }
 }
 
