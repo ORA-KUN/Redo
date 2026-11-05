@@ -1,66 +1,26 @@
 # One class per line (javap -p). "Class :: regex" keeps only matching members (constructors always kept).
 # "grep <regex>" lists the class names matching the regex.
-grep ^net/minecraft/network/protocol/login/Clientbound[A-Za-z]+\.class
-grep ^net/minecraft/world/entity/Interpolation[A-Za-z$]*\.class
-grep ^net/minecraft/client/gui/GuiGraphics[A-Za-z$]*\.class
+# Round 4: what changed between 1.21.11 and 26.1 / 26.2 / 26.3
+grep ^net/minecraft/client/gui/(Gui|Hud)[A-Za-z$]*\.class
+grep ^net/minecraft/client/gui/screens/Screen[A-Z][A-Za-z$]*\.class
+grep ^net/minecraft/client/[A-Za-z]*(Screen|Hud)[A-Za-z$]*\.class
+grep GuiMessageTag\.class
+grep ^com/mojang/blaze3d/pipeline/[A-Za-z$]*\.class
+net.minecraft.client.Minecraft :: [Ss]creen|Target|[Gg]ui|[Hh]ud|[Ww]indow|options|runTick|tick\(|deltaTracker|disconnect\(|camera|Camera
+net.minecraft.client.renderer.GameRenderer :: render|Fov|fov|bob|Camera|camera|Target|extract
+net.minecraft.client.Camera :: setup|update|align|setPosition|setRotation|[Ff]ov|rotation|forwards|up;|left;|detached|extract|tick\(
 net.minecraft.client.DeltaTracker$Timer
-net.minecraft.client.Camera
-net.minecraft.client.Minecraft :: runTick|tick\(|pendingConnection|deltaTracker|disconnect|getUser|getGameProfile|levelRenderer|setLevel|isRunning|getFps|keyboardHandler|getConnection|getCurrentServer|isLocalServer|screen|setScreen|getMainRenderTarget|getWindow|options|gui\b|gameRenderer
-net.minecraft.client.renderer.GameRenderer :: render|renderLevel|getFov|bob|getMainCamera|tick\(
-net.minecraft.client.gui.GuiGraphics :: fill\(|drawString|enableScissor|disableScissor|guiWidth|guiHeight
-net.minecraft.client.gui.GuiGraphicsExtractor :: fill\(|text|drawString|enableScissor|disableScissor|guiWidth|guiHeight|scissor
-net.minecraft.client.gui.Font :: width|lineHeight
-net.minecraft.client.KeyMapping :: key|getDefaultKey|isDown|saveString|getName|getKey
-com.mojang.blaze3d.platform.InputConstants$Key :: getValue|getType
-com.mojang.blaze3d.platform.InputConstants :: isKeyDown
-net.minecraft.client.Options :: hideGui|keyUp|keyDown|keyLeft|keyRight|keyJump|keyShift|keySprint|getCameraType|setCameraType|fov\(\)
-net.minecraft.client.Screenshot :: takeScreenshot|grab
-com.mojang.blaze3d.platform.NativeImage :: public
-net.minecraft.network.Connection :: getReceiving|getSending|isMemoryConnection|channel\b|address|setupCompression|handleDisconnection|isConnected
-net.minecraft.network.PacketDecoder
-net.minecraft.network.UnconfiguredPipelineHandler$InboundConfigurationTask
-net.minecraft.network.UnconfiguredPipelineHandler$OutboundConfigurationTask
-net.minecraft.network.UnconfiguredPipelineHandler$Inbound
-net.minecraft.network.ConnectionProtocol
-net.minecraft.network.protocol.PacketFlow
-net.minecraft.client.multiplayer.ClientHandshakePacketListenerImpl :: handle|connection|serverData|minecraft
-net.minecraft.network.protocol.login.ClientboundLoginFinishedPacket
-com.mojang.authlib.GameProfile :: GameProfile\(|getId|getName|id\(|name\(|properties
-net.minecraft.client.multiplayer.ServerData :: ResourcePack|ServerPackStatus|name\b|ip\b
-net.minecraft.client.multiplayer.ServerData$ServerPackStatus
-net.minecraft.client.multiplayer.ClientLevel :: setServerVerifiedBlockState|setBlock|disconnect|entitiesForRendering|tickRateManager|getEntity\(|addEntity|removeEntity
-net.minecraft.world.level.LevelReader :: getHeight\(|hasChunk|getChunk\(
-net.minecraft.world.level.BlockGetter :: clip\(|getBlockState
-net.minecraft.world.level.levelgen.Heightmap$Types
-net.minecraft.world.entity.Entity :: getId\(|getUUID|getName\(|getType\(|getX\(|getY\(|getZ\(|getYRot\(|getXRot\(|isShiftKeyDown|setShiftKeyDown|isSprinting|onGround\(|isSwimming|isPassenger\(|isInvisible\(|getYHeadRot|setYHeadRot|setPos\(|snapTo|setOldPosAndRot|getInterpolation|xo|yo|zo|yRotO|xRotO|turn\(|noPhysics|isRemoved|setYRot|setXRot|setDeltaMovement|getStringUUID|setYBodyRot
-net.minecraft.world.entity.LivingEntity :: hurtTime|deathTime|swinging|isDeadOrDying|isFallFlying|isSleeping|isUsingItem|getItemBySlot|setItemSlot|yBodyRot|yHeadRot|yBodyRotO|yHeadRotO|getHealth|calculateEntityAnimation|swing\(|getInterpolation|lerp|aiStep|travel
-net.minecraft.client.player.LocalPlayer :: tick\(|aiStep|sendPosition|serverAiStep|isControlledCamera|connection
-net.minecraft.world.entity.player.Player :: getGameProfile|isSpectator|getInventory
-net.minecraft.core.registries.BuiltInRegistries :: ENTITY_TYPE|ITEM\b|BLOCK\b
-net.minecraft.core.Registry :: getKey\(
-net.minecraft.world.item.ItemStack :: getItem\(|isEmpty|copy\(
-net.minecraft.world.level.block.state.BlockBehaviour$BlockStateBase :: isAir|getBlock\(|blocksMotion|isSolid|liquid\(
-net.minecraft.world.entity.EntityType :: getKey|toShortString|builtInRegistryHolder
-net.minecraft.client.gui.components.Button :: builder
-net.minecraft.client.gui.components.Button$Builder :: public
-net.minecraft.client.gui.components.Button$OnPress
-net.minecraft.client.gui.screens.PauseScreen :: init|xxxx
-net.minecraft.client.gui.screens.TitleScreen :: init
-net.minecraft.client.gui.screens.Screen :: init\(|render|renderBackground|extractRenderState|extractBackground|keyPressed|charTyped|mouseClicked|mouseReleased|mouseDragged|mouseScrolled|shouldCloseOnEsc|isPauseScreen|onClose|removed
-net.minecraft.client.gui.components.events.ContainerEventHandler :: mouse|key|char
-net.minecraft.client.gui.components.events.GuiEventListener :: mouse|key|char
-net.minecraft.util.Util :: getPlatform|getMillis
-net.minecraft.util.Util$OS :: open
-net.minecraft.SharedConstants :: getCurrentVersion|getProtocolVersion|VERSION_STRING
-net.minecraft.WorldVersion :: name|protocol|id
+net.minecraft.client.Options :: [Hh]ide|[Hh]ud|[Gg]ui
+net.minecraft.client.gui.Gui :: render|extract|[Hh]ud|hidden|Hidden|[Ss]creen
+net.minecraft.client.gui.Hud :: render|extract|[Hh]idden|toggle
+net.minecraft.client.gui.GuiGraphicsExtractor :: fill\(|text\(|drawString|[Ss]cissor|guiWidth|guiHeight
+net.minecraft.client.gui.screens.Screen :: render|extract|[Bb]ackground|init\(
 net.minecraft.client.gui.components.ChatComponent :: addMessage
-net.minecraft.network.chat.Component :: literal|getString
-net.minecraft.world.level.ClipContext
-net.minecraft.world.level.ClipContext$Block
-net.minecraft.world.level.ClipContext$Fluid
-net.minecraft.world.phys.HitResult :: getType
-net.minecraft.world.phys.shapes.CollisionContext :: empty
-net.minecraft.client.multiplayer.MultiPlayerGameMode :: createPlayer|getPlayerMode
-net.minecraft.client.gui.Gui :: render|extractRenderState
-net.minecraft.client.gui.Hud :: public
-net.minecraft.world.InteractionHand
+net.minecraft.util.Util$OS
+net.minecraft.world.entity.LivingEntity :: swing|Swing|attackAnim
+com.mojang.blaze3d.platform.InputConstants :: isKeyDown
+com.mojang.blaze3d.platform.Window :: [Ww]idth|[Hh]eight|Target|handle
+net.minecraft.client.Screenshot :: takeScreenshot|grab
+net.minecraft.network.protocol.login.ClientboundLoginFinishedPacket :: <init>
+net.minecraft.world.level.block.state.BlockBehaviour$BlockStateBase :: blocksMotion|isSolid|[Cc]ollision
+net.minecraft.client.renderer.LevelRenderer :: Target|render

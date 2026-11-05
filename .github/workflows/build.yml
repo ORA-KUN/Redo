@@ -71,7 +71,14 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build
         working-directory: fabric
-        run: chmod +x gradlew && ./gradlew ":${{ matrix.mc }}:buildAndCollect" --console=plain
+        run: |
+          chmod +x gradlew
+          set -o pipefail
+          ./gradlew ":${{ matrix.mc }}:buildAndCollect" --console=plain 2>&1 | tee build.log
+      - name: Compile errors (short)
+        if: failure()
+        working-directory: fabric
+        run: grep -A1 "error:" build.log | grep -v "^--" | sed -E 's#^.*/fr/orakun/redo/fabric/##; s/^ +//' | awk '!seen[$0]++' | head -150
       - name: Upload jar
         uses: actions/upload-artifact@v4
         with:
