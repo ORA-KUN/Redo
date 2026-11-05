@@ -1,86 +1,56 @@
-# One class per line (javap -p), or "grep <regex>" to list matching class names.
-grep ^net/minecraft/client/[A-Za-z]+\.class
-grep ^net/minecraft/network/[A-Za-z]+\.class
-grep ^net/minecraft/client/multiplayer/[A-Za-z]+\.class
-grep ^net/minecraft/client/gui/[A-Za-z]+\.class
-grep ^net/minecraft/client/input/
-grep ^net/minecraft/client/gui/render/
-grep ^com/mojang/blaze3d/(platform|pipeline|systems|textures)/[A-Za-z]+\.class
-net.minecraft.client.Minecraft
-net.minecraft.client.Camera
-net.minecraft.client.DeltaTracker
-net.minecraft.client.DeltaTracker$Timer
-net.minecraft.client.KeyboardHandler
-net.minecraft.client.MouseHandler
-net.minecraft.client.Options
-net.minecraft.client.Screenshot
-net.minecraft.client.renderer.GameRenderer
-net.minecraft.client.renderer.LevelRenderer
-net.minecraft.client.gui.Gui
-net.minecraft.client.gui.GuiGraphics
-net.minecraft.client.gui.Font
-net.minecraft.client.gui.screens.Screen
-net.minecraft.client.gui.screens.TitleScreen
-net.minecraft.client.gui.screens.PauseScreen
-net.minecraft.client.gui.screens.ConnectScreen
-net.minecraft.client.gui.screens.ReceivingLevelScreen
-net.minecraft.client.gui.screens.LevelLoadingScreen
-net.minecraft.client.gui.components.Button
-net.minecraft.client.gui.components.AbstractWidget
-net.minecraft.client.player.LocalPlayer
-net.minecraft.client.player.RemotePlayer
-net.minecraft.client.player.AbstractClientPlayer
-net.minecraft.client.multiplayer.ClientLevel
-net.minecraft.client.multiplayer.ClientPacketListener
-net.minecraft.client.multiplayer.ClientCommonPacketListenerImpl
-net.minecraft.client.multiplayer.ClientHandshakePacketListenerImpl
-net.minecraft.client.multiplayer.ClientConfigurationPacketListenerImpl
-net.minecraft.client.multiplayer.CommonListenerCookie
-net.minecraft.client.multiplayer.MultiPlayerGameMode
-net.minecraft.client.multiplayer.ServerData
-net.minecraft.network.Connection
+# One class per line (javap -p). "Class :: regex" keeps only matching members.
+# "grep <regex>" lists the class names matching the regex.
+grep ^net/minecraft/client/input/[A-Za-z]+\.class
+grep ^com/mojang/blaze3d/systems/[A-Za-z]+\.class
+grep ^net/minecraft/client/multiplayer/(Level|Client)[A-Za-z]*Load[A-Za-z]*\.class
+grep ^net/minecraft/client/gui/screens/[A-Za-z]*Load[A-Za-z]*\.class
 net.minecraft.network.PacketDecoder
-net.minecraft.network.ProtocolInfo
-net.minecraft.network.UnconfiguredPipelineHandler
+net.minecraft.network.Connection :: configure|setupInbound|setupOutbound|setListener|setupInboundProtocol|getPacketListener|channel\b|<init>|tick\(|disconnect\(|isConnected|genericsFtw|validateListener|channelRead0|handleDisconnection|PacketListener
 net.minecraft.network.HandlerNames
-net.minecraft.network.protocol.PacketFlow
-net.minecraft.network.protocol.Packet
-net.minecraft.network.protocol.game.GameProtocols
-net.minecraft.network.protocol.configuration.ConfigurationProtocols
-net.minecraft.network.protocol.login.LoginProtocols
-net.minecraft.network.protocol.game.ClientboundLoginPacket
-net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket
-net.minecraft.network.protocol.game.ClientboundGameEventPacket
-net.minecraft.network.protocol.game.ClientboundDamageEventPacket
-net.minecraft.network.protocol.game.ClientboundEntityEventPacket
-net.minecraft.network.protocol.game.ClientboundPlayerCombatKillPacket
-net.minecraft.network.protocol.game.ClientboundAnimatePacket
-net.minecraft.network.protocol.game.ClientboundExplodePacket
-net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket
-net.minecraft.network.protocol.game.ClientboundSystemChatPacket
-net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket
-net.minecraft.network.protocol.game.ClientboundRespawnPacket
-net.minecraft.network.protocol.game.ClientboundSetHealthPacket
-net.minecraft.network.protocol.game.ClientboundPlayerAbilitiesPacket
-net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket
-net.minecraft.network.protocol.common.ClientboundDisconnectPacket
-net.minecraft.world.TickRateManager
-net.minecraft.world.entity.Entity
-net.minecraft.world.entity.LivingEntity
-net.minecraft.world.entity.player.Player
-net.minecraft.world.level.Level
-net.minecraft.world.level.ClipContext
-net.minecraft.world.level.levelgen.Heightmap$Types
-net.minecraft.world.level.block.state.BlockBehaviour$BlockStateBase
-net.minecraft.world.phys.Vec3
-net.minecraft.world.phys.HitResult
-net.minecraft.core.BlockPos
-net.minecraft.core.registries.BuiltInRegistries
-net.minecraft.world.item.ItemStack
-net.minecraft.world.entity.EquipmentSlot
-net.minecraft.network.chat.Component
-com.mojang.blaze3d.pipeline.RenderTarget
-com.mojang.blaze3d.platform.Window
-com.mojang.blaze3d.platform.InputConstants
-com.mojang.blaze3d.platform.NativeImage
-com.mojang.blaze3d.systems.RenderSystem
+net.minecraft.network.UnconfiguredPipelineHandler :: public
+net.minecraft.network.ProtocolInfo :: public
+net.minecraft.network.protocol.game.GameProtocols :: public
+net.minecraft.network.protocol.configuration.ConfigurationProtocols :: public
+net.minecraft.network.protocol.login.LoginProtocols :: public
+net.minecraft.client.multiplayer.ClientHandshakePacketListenerImpl :: <init>
+net.minecraft.client.multiplayer.ClientConfigurationPacketListenerImpl :: <init>
+net.minecraft.client.multiplayer.CommonListenerCookie
+net.minecraft.client.multiplayer.ClientPacketListener :: <init>|handleLogin|handleMovePlayer|handleRespawn|handleSetHealth|handlePlayerAbilities|handlePlayerCombatKill|handleDisconnect|getLevel|close\(
+net.minecraft.client.Minecraft :: public .*(tick\(|setScreen|disconnect|getConnection|getWindow|getDeltaTracker|getMainRenderTarget|isPaused|getCameraEntity|setCameraEntity|runTick|getCurrentServer|isLocalServer|clearClientLevel|setLevel|gameRenderer|levelRenderer|font|options|player|level|gameMode|mouseHandler|keyboardHandler|gui\b)
+net.minecraft.client.Minecraft :: (deltaTracker|timer|pause)
+net.minecraft.client.DeltaTracker$Timer
+net.minecraft.client.Camera :: setup|setPosition|setRotation|position|rotation|getXRot|getYRot|getEntity|isDetached|alignWithEntity|getPartialTickTime|update
+net.minecraft.client.renderer.GameRenderer :: render|renderLevel|getFov|bobView|bobHurt|getMainCamera|renderItemInHand|pick
+net.minecraft.client.gui.GuiGraphics :: <init>|fill\(|drawString|guiWidth|guiHeight|enableScissor|disableScissor|pose\(|nextStratum|text\(
+net.minecraft.client.gui.Font :: width\(|lineHeight
+net.minecraft.client.gui.screens.Screen :: render|init\(|keyPressed|charTyped|mouseClicked|mouseReleased|mouseDragged|mouseScrolled|isPauseScreen|onClose|shouldCloseOnEsc|removed|<init>
+net.minecraft.client.gui.components.events.ContainerEventHandler :: mouse|key|char
+net.minecraft.client.input.KeyEvent
+net.minecraft.client.input.MouseButtonEvent
+net.minecraft.client.input.MouseButtonInfo
+net.minecraft.client.input.CharacterEvent
+com.mojang.blaze3d.platform.InputConstants :: isKeyDown
+com.mojang.blaze3d.platform.Window :: public .*(Width|Height|GuiScale|handle|Scaled)
+com.mojang.blaze3d.pipeline.RenderTarget :: public
+net.minecraft.client.Screenshot :: public
+com.mojang.blaze3d.systems.RenderSystem :: getDevice|assertOnRenderThread|outputColorTextureOverride
+com.mojang.blaze3d.systems.CommandEncoder :: copyTextureToBuffer|readTexture|clearColorTexture
+com.mojang.blaze3d.systems.GpuDevice :: createBuffer
+net.minecraft.world.TickRateManager :: public
+net.minecraft.client.multiplayer.ClientLevel :: tickRateManager|<init>|getEntity\(|entitiesForRendering
+net.minecraft.client.player.LocalPlayer :: <init>
+net.minecraft.client.player.RemotePlayer :: <init>
+net.minecraft.world.entity.Entity :: snapTo|moveTo|absSnapTo|setOldPosAndRot|setPos\(|setYHeadRot|setYBodyRot|isShiftKeyDown|isFallFlying|isSwimming|onGround\(|isPassenger\(|isInvisible\(|getName\(|getType\(|tickCount
+net.minecraft.world.entity.LivingEntity :: getItemBySlot|isFallFlying|isSleeping|swing\(|isUsingItem|hurtTime|yBodyRot|yHeadRot
+net.minecraft.client.gui.Gui :: render\(
+net.minecraft.client.gui.screens.TitleScreen :: init\(|<init>
+net.minecraft.client.gui.screens.PauseScreen :: init\(|createPauseMenu
+net.minecraft.client.gui.components.Button :: builder
+net.minecraft.client.Options :: hideGui|getCameraType|setCameraType|keyUp|keyDown|keyLeft|keyRight|keyJump|keyShift|fov\(|guiScale\(
+net.minecraft.client.KeyMapping :: <init>|isDown|consumeClick
+net.minecraft.client.MouseHandler :: grabMouse|releaseMouse|isMouseGrabbed|turnPlayer|xpos|ypos|onScroll|handleAccumulatedMovement
+net.minecraft.client.multiplayer.ServerData :: name|ip|<init>
+net.minecraft.client.multiplayer.ClientCommonPacketListenerImpl :: serverData|getServerData|connection
+net.minecraft.world.level.block.state.BlockBehaviour$BlockStateBase :: isAir|blocksMotion|isSolid\(|canOcclude|liquid\(
+net.minecraft.world.level.Level :: getBlockState|clip\(|getHeight\(|hasChunkAt|isLoaded
+net.minecraft.world.level.ClipContext :: <init>

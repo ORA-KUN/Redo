@@ -137,9 +137,15 @@ tasks.register("redoProbe") {
                 }
                 continue
             }
-            val proc = ProcessBuilder("javap", "-p", "-cp", cpString, line).redirectErrorStream(true).start()
-            sb.append(proc.inputStream.bufferedReader().readText()).append('\n')
+            // "Class :: regex" keeps only the members matching the regex
+            val cls = line.substringBefore(" :: ").trim()
+            val filter = if (line.contains(" :: ")) Regex(line.substringAfter(" :: ").trim()) else null
+            val proc = ProcessBuilder("javap", "-p", "-cp", cpString, cls).redirectErrorStream(true).start()
+            val text = proc.inputStream.bufferedReader().readLines()
             proc.waitFor()
+            text.filter { filter == null || it.contains(" class ") || it.contains(" interface ") || it.startsWith("Error") || filter.containsMatchIn(it) }
+                .forEach { sb.append(it).append('\n') }
+            sb.append('\n')
         }
         out.writeText(sb.toString())
         println("PROBE written ${out.absolutePath} (${sb.length} chars)")

@@ -1,67 +1,35 @@
-# One class per line (javap -p), or "grep <regex>" to list matching class names.
-grep ^net/minecraft/client/[a-z]+/[A-Za-z]+\.class
-grep ^net/minecraft/network/[A-Za-z]+\.class
-net.minecraft.client.Minecraft
-net.minecraft.client.renderer.EntityRenderer
-net.minecraft.client.renderer.RenderGlobal
-net.minecraft.client.renderer.ActiveRenderInfo
-net.minecraft.client.renderer.GlStateManager
-net.minecraft.client.renderer.Tessellator
-net.minecraft.client.renderer.WorldRenderer
-net.minecraft.client.renderer.OpenGlHelper
-net.minecraft.client.shader.Framebuffer
-net.minecraft.client.gui.Gui
-net.minecraft.client.gui.GuiIngame
-net.minecraft.client.gui.GuiScreen
-net.minecraft.client.gui.GuiMainMenu
-net.minecraft.client.gui.GuiIngameMenu
-net.minecraft.client.gui.GuiDownloadTerrain
-net.minecraft.client.gui.GuiButton
-net.minecraft.client.gui.FontRenderer
-net.minecraft.client.gui.ScaledResolution
-net.minecraft.client.multiplayer.WorldClient
-net.minecraft.client.multiplayer.PlayerControllerMP
-net.minecraft.client.multiplayer.ServerData
-net.minecraft.client.multiplayer.GuiConnecting
-net.minecraft.client.network.NetHandlerPlayClient
-net.minecraft.client.entity.EntityPlayerSP
-net.minecraft.client.entity.EntityOtherPlayerMP
-net.minecraft.client.entity.AbstractClientPlayer
-net.minecraft.network.NetworkManager
-net.minecraft.network.EnumConnectionState
-net.minecraft.network.EnumPacketDirection
-net.minecraft.network.PacketBuffer
-net.minecraft.network.Packet
+# One class per line (javap -p). "Class :: regex" keeps only matching members.
 net.minecraft.util.MessageDeserializer
-net.minecraft.util.MessageDeserializer2
+net.minecraft.network.NetworkManager :: <init>|channel|setNetHandler|getNetHandler|channelRead0|setConnectionState|isChannelOpen|processReceivedPackets|isLocalChannel|closeChannel|sendPacket|checkDisconnected|field_|public
+net.minecraft.network.EnumConnectionState :: getPacket|getPacketId|PLAY|getFromPacket
+net.minecraft.network.PacketBuffer :: <init>|readVarIntFromBuffer|readVarInt
+net.minecraft.network.Packet
+net.minecraft.client.network.NetHandlerPlayClient :: <init>|handleJoinGame|handlePlayerPosLook|clientWorldController|gameController|getNetworkManager|cleanup|onDisconnect
+net.minecraft.client.Minecraft :: timer|thePlayer|theWorld|myNetworkManager|entityRenderer|renderGlobal|getRenderViewEntity|setRenderViewEntity|displayGuiScreen|loadWorld|getFramebuffer|isGamePaused|runTick|currentScreen|gameSettings|playerController|fontRendererObj|ingameGUI|displayWidth|displayHeight|isSingleplayer|getCurrentServerData|setServerData|getNetHandler|runGameLoop|launchedVersion|mcDataDir|getSystemTime|renderPartialTicks
 net.minecraft.util.Timer
-net.minecraft.util.MovingObjectPosition
-net.minecraft.util.Vec3
-net.minecraft.util.BlockPos
-net.minecraft.util.ScreenShotHelper
-net.minecraft.entity.Entity
-net.minecraft.entity.EntityLivingBase
-net.minecraft.entity.player.EntityPlayer
-net.minecraft.world.World
-net.minecraft.world.WorldSettings
-net.minecraft.world.WorldSettings$GameType
-net.minecraft.network.play.server.S01PacketJoinGame
-net.minecraft.network.play.server.S08PacketPlayerPosLook
-net.minecraft.network.play.server.S06PacketUpdateHealth
-net.minecraft.network.play.server.S2BPacketChangeGameState
-net.minecraft.network.play.server.S19PacketEntityStatus
-net.minecraft.network.play.server.S0BPacketAnimation
-net.minecraft.network.play.server.S27PacketExplosion
-net.minecraft.network.play.server.S23PacketBlockChange
-net.minecraft.network.play.server.S02PacketChat
-net.minecraft.network.play.server.S45PacketTitle
-net.minecraft.network.play.server.S07PacketRespawn
-net.minecraft.network.play.server.S39PacketPlayerAbilities
-net.minecraft.network.play.server.S40PacketDisconnect
-net.minecraft.network.play.server.S38PacketPlayerListItem
-net.minecraftforge.fml.common.network.handshake.NetworkDispatcher
-net.minecraftforge.client.event.RenderGameOverlayEvent
-net.minecraftforge.client.event.RenderWorldLastEvent
-net.minecraftforge.fml.common.gameevent.TickEvent
-net.minecraftforge.fml.common.gameevent.InputEvent
-org.lwjgl.input.Keyboard
+net.minecraft.client.renderer.EntityRenderer :: updateCameraAndRender|renderWorld|orientCamera|setupCameraTransform|getFOVModifier|hurtCameraEffect|setupViewBobbing|renderHand|renderWorldPass|func_
+net.minecraft.client.renderer.ActiveRenderInfo :: public
+net.minecraft.client.shader.Framebuffer :: public
+net.minecraft.util.ScreenShotHelper :: public
+net.minecraft.client.gui.GuiScreen :: drawScreen|initGui|keyTyped|mouseClicked|mouseReleased|mouseClickMove|handleMouseInput|handleKeyboardInput|doesGuiPauseGame|onGuiClosed|updateScreen|width|height|buttonList|setWorldAndResolution|drawDefaultBackground
+net.minecraft.client.gui.Gui :: drawRect|drawString|drawGradientRect
+net.minecraft.client.gui.FontRenderer :: getStringWidth|FONT_HEIGHT|drawString|drawStringWithShadow
+net.minecraft.client.gui.ScaledResolution :: public
+net.minecraft.client.gui.GuiMainMenu :: initGui|actionPerformed
+net.minecraft.client.gui.GuiIngameMenu :: initGui|actionPerformed
+net.minecraft.client.gui.GuiIngame :: renderGameOverlay
+net.minecraft.client.multiplayer.WorldClient :: <init>|getEntityByID|addEntityToWorld|removeEntityFromWorld|loadedEntityList
+net.minecraft.client.entity.EntityOtherPlayerMP :: <init>|setPositionAndRotation2|onLivingUpdate|otherPlayerMP
+net.minecraft.client.entity.EntityPlayerSP :: <init>|sendQueue|movementInput
+net.minecraft.entity.Entity :: setPositionAndRotation|setLocationAndAngles|prevPos|lastTick|rotationYaw|rotationPitch|getEntityId|getUniqueID|isSneaking|isSprinting|onGround|isRiding|isInvisible|getName\(|ridingEntity|ticksExisted|posX|noClip
+net.minecraft.entity.EntityLivingBase :: rotationYawHead|renderYawOffset|swingItem|isSwingInProgress|hurtTime|getHeldItem|getEquipmentInSlot|isPlayerSleeping|isUsingItem|getCurrentArmor|prevRotationYawHead|prevRenderYawOffset|limbSwing
+net.minecraft.world.World :: getBlockState|rayTraceBlocks|getHeight\(|isBlockLoaded|getChunkFromBlockCoords|getTopSolidOrLiquidBlock|getHorizon
+net.minecraftforge.client.event.RenderGameOverlayEvent :: public
+net.minecraftforge.client.event.GuiScreenEvent$InitGuiEvent$Post :: public
+net.minecraftforge.client.event.GuiScreenEvent$ActionPerformedEvent$Post :: public
+net.minecraftforge.client.event.EntityViewRenderEvent$CameraSetup :: public
+net.minecraftforge.client.event.EntityViewRenderEvent$FOVModifier :: public
+net.minecraftforge.client.event.RenderWorldLastEvent :: public
+net.minecraftforge.fml.common.gameevent.TickEvent$RenderTickEvent :: public
+net.minecraftforge.fml.common.network.handshake.NetworkDispatcher :: public
+net.minecraftforge.fml.common.network.internal.FMLNetworkHandler :: public

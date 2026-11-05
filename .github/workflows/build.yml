@@ -22,7 +22,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Test the shared core
         working-directory: core
-        run: chmod +x gradlew && ./gradlew test --stacktrace
+        run: chmod +x gradlew && ./gradlew test --console=plain
       - name: Upload test report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -42,20 +42,9 @@ jobs:
             8
             17
       - uses: gradle/actions/setup-gradle@v4
-      - name: Probe Minecraft classes
-        working-directory: forge-1.8.9
-        continue-on-error: true
-        run: chmod +x gradlew && ./gradlew redoProbe --stacktrace
-      - name: Upload probe
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: probe-1.8.9
-          path: forge-1.8.9/build/probe/
-          if-no-files-found: ignore
       - name: Build
         working-directory: forge-1.8.9
-        run: ./gradlew build --stacktrace
+        run: chmod +x gradlew && ./gradlew build --console=plain
       - name: Upload jar
         uses: actions/upload-artifact@v4
         with:
@@ -78,20 +67,9 @@ jobs:
             21
             25
       - uses: gradle/actions/setup-gradle@v4
-      - name: Probe Minecraft classes
-        working-directory: fabric
-        continue-on-error: true
-        run: chmod +x gradlew && ./gradlew ":${{ matrix.mc }}:redoProbe" --stacktrace
-      - name: Upload probe
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: probe-${{ matrix.mc }}
-          path: fabric/build/probe/
-          if-no-files-found: ignore
       - name: Build
         working-directory: fabric
-        run: ./gradlew ":${{ matrix.mc }}:buildAndCollect" --stacktrace
+        run: chmod +x gradlew && ./gradlew ":${{ matrix.mc }}:buildAndCollect" --console=plain
       - name: Upload jar
         uses: actions/upload-artifact@v4
         with:
