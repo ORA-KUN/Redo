@@ -55,7 +55,9 @@ public final class ShotBuilder {
         } else {
             source = m.peakMs - Math.round(cover * 0.55);
         }
-        source = Math.max(0, Math.min(source, Math.max(0, track.durationMs() - cover)));
+        // nothing to film before the recording has a world (its first moment): no frozen start
+        long first = Math.max(0, track.startMs());
+        source = Math.max(first, Math.min(source, Math.max(first, track.durationMs() - cover)));
 
         if (subject != Integer.MIN_VALUE && track.positionAt(subject, source + cover / 2.0) == null) {
             subject = Integer.MIN_VALUE; // no data for this entity then: film the place instead
