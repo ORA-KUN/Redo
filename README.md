@@ -10,8 +10,7 @@ Redo s'inspire de ce que font Flashback et le replay de Lunar Client, sans repre
 |---|---|---|
 | 1.8.9 | Forge 11.15.1.2318 | compilé et testé en jeu par la CI |
 | 1.21.11 | Fabric Loader 0.17+ (sans Fabric API) | compilé et testé en jeu par la CI |
-| 26.1, 26.2 | Fabric Loader 0.17+ (sans Fabric API) | compilés et testés en jeu par la CI |
-| 26.3 | Fabric Loader 0.17+ (sans Fabric API) | compilé par la CI ; le test en jeu ne démarre pas encore sur l'écran virtuel de la CI (nouveau moteur de rendu de 26.3) |
+| 26.1, 26.2, 26.3 | Fabric Loader 0.17+ (sans Fabric API) | compilés et testés en jeu par la CI |
 
 Un enregistrement se relit avec la version de Minecraft qui l'a fait (le format des paquets change d'une version à l'autre).
 

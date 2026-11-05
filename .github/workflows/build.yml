@@ -55,8 +55,6 @@ jobs:
   fabric:
     name: Redo ${{ matrix.mc }} (Fabric)
     runs-on: ubuntu-24.04
-    # 26.x rewrote rendering and input: those versions are ported after 1.21.11 works
-    continue-on-error: ${{ matrix.mc != '1.21.11' }}
     strategy:
       fail-fast: false
       matrix:
@@ -90,8 +88,6 @@ jobs:
     name: Redo ${{ matrix.mc }} in-game test
     runs-on: ubuntu-24.04
     timeout-minutes: 40
-    # 26.x is still being ported: its test runs but does not fail the build yet
-    continue-on-error: ${{ startsWith(matrix.mc, '26.') }}
     strategy:
       fail-fast: false
       matrix:
