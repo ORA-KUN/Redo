@@ -16,6 +16,7 @@
     "MinecraftMixin",
     "PacketDecoderMixin",
     "PauseScreenMixin",
+    "ScreenSwitchMixin",
     "TitleScreenMixin"
   ],
   "injectors": {

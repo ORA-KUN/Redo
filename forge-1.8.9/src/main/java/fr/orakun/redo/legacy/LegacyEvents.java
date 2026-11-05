@@ -8,6 +8,7 @@ import net.minecraft.client.gui.GuiIngameMenu;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.client.event.EntityViewRenderEvent;
+import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
@@ -38,6 +39,11 @@ public final class LegacyEvents {
             Minecraft.getMinecraft().entityRenderer.setupOverlayRendering();
             e.setCanceled(true);
         }
+    }
+
+    @SubscribeEvent
+    public void onGuiOpen(GuiOpenEvent e) {
+        if (LegacyClient.keepEditor(e.gui)) e.setCanceled(true);
     }
 
     @SubscribeEvent

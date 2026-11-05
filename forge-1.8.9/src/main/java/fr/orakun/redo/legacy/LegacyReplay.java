@@ -100,8 +100,10 @@ public final class LegacyReplay extends AbstractReplay {
         Minecraft mc = Minecraft.getMinecraft();
         LegacyClient.busy++;
         try {
+            // the editor stays open while the world is rebuilt (see LegacyClient.keepEditor)
+            boolean editor = LegacyClient.editorShown();
             mc.loadWorld(null);
-            mc.displayGuiScreen(new RedoGuiScreen(new MessageView("Redo", "Retour en arrière…", true, null), null));
+            if (!editor) mc.displayGuiScreen(new RedoGuiScreen(new MessageView("Redo", "Retour en arrière…", true, null), null));
         } finally {
             LegacyClient.busy--;
         }

@@ -78,6 +78,20 @@ public final class RedoClient {
         return replay() != null;
     }
 
+    /** True while the replay editor is the open screen. */
+    public static boolean editorShown() {
+        Screen s = Compat.screen();
+        return s instanceof RedoScreen && ((RedoScreen) s).view instanceof EditorView;
+    }
+
+    /**
+     * While the replay editor is open, the game's own screens (level loading when the world is
+     * rebuilt for a jump back, death screen...) do not replace it: no flash, the mouse stays free.
+     */
+    public static boolean keepEditor(Screen next) {
+        return replayActive() && editorShown() && (next == Compat.screen() || !(next instanceof RedoScreen));
+    }
+
     private static boolean keyDown(int key) {
         return key >= 0 && Compat.keyDown(key);
     }

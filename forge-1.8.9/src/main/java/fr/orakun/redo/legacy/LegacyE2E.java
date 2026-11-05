@@ -43,6 +43,9 @@ final class LegacyE2E {
     private static long startedAt;
     private static long lastTickAt = -1;
     private static long seekStartedAt;
+    /** Ticks of the jump back during which another screen replaced the editor. */
+    private static int editorLostTicks;
+    private static String editorLostTo = "";
     private static long seekTo;
     private static File recording;
 
@@ -327,9 +330,18 @@ final class LegacyE2E {
                     r.seek(seekTo);
                     seekStartedAt = System.currentTimeMillis();
                 }
+                // the editor stays on screen while the world is rebuilt (no loading screens)
+                if (ticks > 1 && !(mc.currentScreen instanceof RedoGuiScreen && ((RedoGuiScreen) mc.currentScreen).view instanceof EditorView)) {
+                    editorLostTicks++;
+                    editorLostTo = mc.currentScreen == null ? "no screen" : mc.currentScreen.getClass().getName();
+                }
                 if (ticks > 40 && !r.isSeeking() && mc.theWorld != null && mc.thePlayer != null && mc.currentScreen instanceof RedoGuiScreen
                         && ((RedoGuiScreen) mc.currentScreen).view instanceof EditorView) {
                     log("jumped back to " + (long) r.timeMs() + " ms in " + (System.currentTimeMillis() - seekStartedAt) + " ms");
+                    if (editorLostTicks > 0) {
+                        fail("the editor left the screen during the jump back (" + editorLostTicks + " ticks, " + editorLostTo + ")");
+                        return;
+                    }
                     if (Math.abs(r.timeMs() - seekTo) > 200) {
                         fail("seek landed at " + r.timeMs());
                         return;

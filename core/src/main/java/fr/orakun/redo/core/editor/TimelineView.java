@@ -298,11 +298,13 @@ public final class TimelineView extends Widget {
         int ty = trackY();
         if (my >= ty + track()) {
             drag = Drag.SCRUB;
+            s.scrubbing = true;
             s.setPlayhead(toMs(mx));
             return true;
         }
         if (my < ty || button == 2) {
             drag = Drag.SCRUB;
+            s.scrubbing = true;
             s.setPlayhead(toMs(mx));
             return true;
         }
@@ -310,6 +312,7 @@ public final class TimelineView extends Widget {
         if (c == null) {
             s.selected = null;
             drag = Drag.SCRUB;
+            s.scrubbing = true;
             s.setPlayhead(toMs(mx));
             return true;
         }
@@ -398,6 +401,7 @@ public final class TimelineView extends Widget {
         }
         drag = Drag.NONE;
         dragClip = null;
+        s.scrubbing = false;
     }
 
     @Override

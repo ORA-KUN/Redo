@@ -18,6 +18,7 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.channel.ChannelPromise;
 import io.netty.channel.embedded.EmbeddedChannel;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.multiplayer.ClientHandshakePacketListenerImpl;
 import net.minecraft.client.multiplayer.LevelLoadTracker;
@@ -115,7 +116,9 @@ public final class FabricReplay extends AbstractReplay {
         RedoClient.busy++;
         try {
             // keeps the server resource packs: the world is rebuilt right away
-            mc.disconnect(new RedoScreen(new MessageView("Redo", "Retour en arrière…", true, null), null), true);
+            // the editor stays open while the world is rebuilt (see RedoClient.keepEditor)
+            Screen next = RedoClient.editorShown() ? Compat.screen() : new RedoScreen(new MessageView("Redo", "Retour en arrière…", true, null), null);
+            mc.disconnect(next, true);
         } finally {
             RedoClient.busy--;
         }

@@ -75,6 +75,20 @@ public final class LegacyClient {
         return replay() != null;
     }
 
+    /** True while the replay editor is the open screen. */
+    public static boolean editorShown() {
+        GuiScreen s = Minecraft.getMinecraft().currentScreen;
+        return s instanceof RedoGuiScreen && ((RedoGuiScreen) s).view instanceof EditorView;
+    }
+
+    /**
+     * While the replay editor is open, the game's own screens (terrain loading when the world is
+     * rebuilt for a jump back, death screen...) do not replace it: no flash, the mouse stays free.
+     */
+    public static boolean keepEditor(GuiScreen next) {
+        return replayActive() && editorShown() && !(next instanceof RedoGuiScreen);
+    }
+
     public static int modifiers() {
         int m = 0;
         if (Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT)) m |= Keys.MOD_SHIFT;

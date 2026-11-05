@@ -43,6 +43,9 @@ final class E2E {
     private static long startedAt;
     private static long lastTickAt = -1;
     private static long seekStartedAt;
+    /** Ticks of the jump back during which another screen replaced the editor. */
+    private static int editorLostTicks;
+    private static String editorLostTo = "";
     private static long seekTo;
     private static File recording;
 
@@ -341,9 +344,18 @@ final class E2E {
                     r.seek(seekTo);
                     seekStartedAt = System.currentTimeMillis();
                 }
+                // the editor stays on screen while the world is rebuilt (no loading screens)
+                if (ticks > 1 && !(Compat.screen() instanceof RedoScreen && ((RedoScreen) Compat.screen()).view instanceof EditorView)) {
+                    editorLostTicks++;
+                    editorLostTo = Compat.screen() == null ? "no screen" : Compat.screen().getClass().getName();
+                }
                 if (ticks > 5 && !r.isSeeking() && mc.level != null && mc.player != null && Compat.screen() instanceof RedoScreen
                         && ((RedoScreen) Compat.screen()).view instanceof EditorView && ticks > 40) {
                     log("jumped back to " + (long) r.timeMs() + " ms in " + (System.currentTimeMillis() - seekStartedAt) + " ms");
+                    if (editorLostTicks > 0) {
+                        fail("the editor left the screen during the jump back (" + editorLostTicks + " ticks, " + editorLostTo + ")");
+                        return;
+                    }
                     if (Math.abs(r.timeMs() - seekTo) > 200) {
                         fail("seek landed at " + r.timeMs());
                         return;

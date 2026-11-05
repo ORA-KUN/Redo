@@ -75,6 +75,12 @@ public final class EditorSession {
     private Clip lastClip;
     private boolean seekPending;
     private long lastSeekRequest;
+    private long playheadChangedAt;
+    /**
+     * True while the playhead is dragged on the timeline. A jump back rebuilds the replay world
+     * from the start, so it waits until the playhead is released or stops moving.
+     */
+    public boolean scrubbing;
     public boolean promptBusy;
     public String promptMessage = "";
     public ExportJob export;
@@ -179,7 +185,11 @@ public final class EditorSession {
     private void driveSingle(Clip c, double dtMs) {
         if (playing && !backend.isSeeking() && !seekPending) {
             previewMs += dtMs;
-            if (previewMs >= c.durationMs) previewMs = 0; // loop
+            if (previewMs >= c.durationMs) {
+                // stops at the end: looping would jump back, and a jump back rebuilds the world
+                previewMs = c.durationMs;
+                playing = false;
+            }
         }
         apply(c, c.replayTimeAt(previewMs), c.cameraAt(previewMs));
     }
@@ -198,19 +208,17 @@ public final class EditorSession {
         boolean jumped = clip != lastClip || Math.abs(now - replayTime) > (playing ? 600 : 40);
         lastClip = clip;
         if (backend.isSeeking()) return;
-        if (jumped && replayTime >= 0) {
+        if (jumped && replayTime >= 0) seekPending = true;
+        if (seekPending && replayTime >= 0) {
             long t = System.currentTimeMillis();
-            if (playing || t - lastSeekRequest > 120) {
+            boolean backward = replayTime < now - 60;
+            // a jump back rebuilds the world: only once the playhead has stopped moving
+            boolean settling = backward && !playing && (scrubbing || t - playheadChangedAt < 200);
+            if (!settling && (playing || t - lastSeekRequest > 120)) {
                 backend.seek((long) replayTime);
                 lastSeekRequest = t;
                 seekPending = false;
-            } else {
-                seekPending = true;
             }
-        } else if (seekPending && System.currentTimeMillis() - lastSeekRequest > 120) {
-            backend.seek((long) replayTime);
-            lastSeekRequest = System.currentTimeMillis();
-            seekPending = false;
         }
         backend.setSpeed(clip.speed);
         backend.setPaused(!playing || beforeWorld);
@@ -220,10 +228,12 @@ public final class EditorSession {
 
     public void togglePlay() {
         if (!playing && previewShot == null && playheadMs >= sequence.duration() - 1) playheadMs = 0;
+        if (!playing && previewShot != null && previewMs >= previewShot.clip.durationMs) previewMs = 0;
         playing = !playing;
     }
 
     public void setPlayhead(double t) {
+        playheadChangedAt = System.currentTimeMillis();
         previewShot = null;
         playheadMs = Math.max(0, Math.min(t, sequence.duration()));
     }
