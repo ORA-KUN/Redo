@@ -147,7 +147,7 @@ public final class RecordingsView implements View {
                 reload();
             }
         });
-        final Cycle<Boolean> auto = new Cycle<Boolean>("Enregistrement auto : ", new Boolean[]{true, false},
+        final Cycle<Boolean> auto = new Cycle<Boolean>("Enregistrer dès la connexion", new Boolean[]{true, false},
                 Redo.config().autoRecord, new Cycle.Namer<Boolean>() {
             @Override
             public String name(Boolean v) {
@@ -160,8 +160,8 @@ public final class RecordingsView implements View {
                 Redo.config().save();
             }
         });
-        auto.bounds(listX, by + 16, 170, 14);
-        auto.tooltip = "Enregistre chaque partie multijoueur dès la connexion.";
+        auto.bounds(listX, by + 16, 200, 14);
+        auto.tooltip = "Sinon, l'enregistrement se lance avec le bouton ● Enregistrer du menu Échap.";
         widgets.add(auto);
         add("Fermer", listX + listW - 60, by, 60, new Runnable() {
             @Override
@@ -278,7 +278,7 @@ public final class RecordingsView implements View {
             }
             int subColor = canOpen(e) ? Theme.TEXT_DIM : Theme.RED;
             g.text(Widget.fit(g, sub, listW - 120), listX + 6, y + 15, subColor, false);
-            String dur = e.archive == null ? "" : Director.formatTime(e.archive.meta.durationMs);
+            String dur = e.archive == null ? "" : Director.formatTime(e.archive.meta.durationMs - Math.max(0, e.archive.meta.clipStartMs));
             String size = String.format("%.1f Mo", e.file.length() / (1024.0 * 1024.0));
             g.text(dur, listX + listW - 6 - g.textWidth(dur), y + 4, Theme.TEXT, false);
             g.text(size, listX + listW - 6 - g.textWidth(size), y + 15, Theme.TEXT_DIM, false);

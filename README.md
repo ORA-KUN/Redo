@@ -29,7 +29,7 @@ Un enregistrement se relit avec la version de Minecraft qui l'a fait (le format 
 
 Fais **Échap** en jeu : le bouton **● Enregistrer** en haut à droite du menu lance l'enregistrement et te ramène en jeu. Le même bouton (**■ Arrêter**) l'arrête et le sauvegarde ; tu peux en refaire autant que tu veux sur le même serveur. Quitter le serveur pendant un enregistrement le sauvegarde aussi. Un petit point rouge en haut de l'écran indique qu'il tourne.
 
-Pour rebâtir le monde, Redo garde en arrière-plan ce que le serveur envoie depuis ta connexion (dans un dossier temporaire, effacé quand tu quittes si tu n'as rien enregistré). L'enregistrement s'ouvre ensuite pile à l'endroit où tu as cliqué. Si tu préfères que tout soit enregistré dès la connexion, active « Enregistrer automatiquement » dans les réglages.
+Pour rebâtir le monde, Redo garde en arrière-plan ce que le serveur envoie depuis ta connexion (dans un dossier temporaire, effacé quand tu quittes si tu n'as rien enregistré). L'enregistrement s'ouvre ensuite pile à l'endroit où tu as cliqué. Si tu préfères que tout soit enregistré dès la connexion, active « Enregistrer dès la connexion » dans les réglages ou dans la liste des enregistrements.
 
 - **F9** : début / fin d'un moment fort (Redo le mettra en avant dans la bande-annonce).
 - **M** : pose un marqueur sur la timeline.
@@ -42,7 +42,7 @@ Le bouton **Redo** en haut à droite de l'écran titre ouvre la liste des enregi
 
 L'éditeur a trois modes :
 
-- **Montage** : aperçu, timeline des plans, inspecteur du plan choisi, propositions de plans, bande-annonce automatique, export.
+- **Montage** : aperçu, timeline des plans, inspecteur du plan choisi, propositions de plans (chutier, avec les filtres Tous, Auto, Prompt, Libres et ★ favoris), bande-annonce automatique (choisis le style puis **Créer la bande-annonce**), export. Sous la timeline, la bande **Partie** montre toute la partie avec les moments repérés en couleur : clique sur un moment pour voir son meilleur plan. Chaque bouton affiche son aide quand on le survole.
 - **Caméra libre** : tu te déplaces comme en spectateur avec tes touches de déplacement, saut et sneak, **K** ajoute une image clé, **Entrée** transforme les images clés en plan, **P** lecture / pause, flèches pour avancer, reculer et changer la vitesse.
 - **Plein écran** : la vidéo seule, **Espace** pour lire, **F** ou **Échap** pour revenir.
 
@@ -63,7 +63,9 @@ Le champ en bas de l'éditeur accepte une demande en français ou en anglais, pu
 
 ## Réglages
 
-`config/redo.json` : enregistrement automatique (`autoRecord`, désactivé par défaut), taille des écrans Redo (`uiScale`, 0 = automatique, sinon nombre de pixels de l'écran par pixel d'interface), sauvegarde automatique, touches (codes GLFW), dossiers des enregistrements et des vidéos, chemin de ffmpeg, clé et modèle Claude, vitesse de la caméra libre, affichage du point rouge.
+Le bouton **Réglages** de l'éditeur règle la clé Claude, l'enregistrement dès la connexion, la taille de l'interface et la vitesse de la caméra libre.
+
+`config/redo.json` : enregistrement dès la connexion (`autoRecord`, désactivé par défaut), taille des écrans Redo (`uiScale`, 0 = automatique, sinon nombre de pixels de l'écran par pixel d'interface), touches (codes GLFW), dossiers des enregistrements et des vidéos, chemin de ffmpeg, clé et modèle Claude, vitesse de la caméra libre, affichage du point rouge.
 
 ## Limites connues
 

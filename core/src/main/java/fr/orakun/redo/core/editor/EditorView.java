@@ -32,7 +32,9 @@ import java.util.Locale;
  * prompt bar and timeline at the bottom. Platform screens forward drawing and input here.
  */
 public final class EditorView implements View {
-    private static final String[] FILTERS = {"Tous", "Auto", "Prompt", "Manuels", "★"};
+    private static final String[] FILTERS = {"Tous", "Auto", "Prompt", "Libres", "★"};
+    private static final String[] FILTER_TIPS = {"Tous les plans", "Plans trouvés par le réalisateur automatique",
+            "Plans créés avec le prompt", "Plans faits en caméra libre", "Plans favoris (☆ sur un plan)"};
     private static final int[][] RESOLUTIONS = {{1280, 720}, {1920, 1080}, {2560, 1440}, {3840, 2160}, {1080, 1920}};
     private static final Integer[] FPS = {24, 30, 60};
 
@@ -59,6 +61,11 @@ public final class EditorView implements View {
 
     // layout
     private int topH, binW, inspW, vpX, vpY, vpW, vpH, ctrlY, promptY, tlY;
+    private final int[] tabX0 = new int[FILTERS.length], tabX1 = new int[FILTERS.length];
+    private Gfx measure;
+    private Button previewBtn, addBtn;
+    private String tipText;
+    private long tipSince;
 
     // inspector widgets (rebuilt when the selection changes)
     private final List<Widget> inspector = new ArrayList<Widget>();
@@ -96,7 +103,7 @@ public final class EditorView implements View {
         lastLayoutW = W;
         lastLayoutH = H;
         topH = 18;
-        binW = clamp(W * 22 / 100, 128, 190);
+        binW = clamp(W * 25 / 100, 160, 200);
         inspW = clamp(W * 20 / 100, 118, 170);
         int tlH = Math.max(70, H * 24 / 100);
         tlY = H - tlH;
@@ -108,6 +115,7 @@ public final class EditorView implements View {
         vpH = ctrlY - topH;
         timeline.bounds(0, tlY + 14, W, tlH - 14);
         prompt.bounds(binW + 4, promptY + 3, vpW - 70, 14);
+        measure = g;
         buildWidgets();
         buildFreeWidgets();
         inspected = null;
@@ -115,6 +123,10 @@ public final class EditorView implements View {
 
     private static int clamp(int v, int lo, int hi) {
         return Math.max(lo, Math.min(hi, v));
+    }
+
+    private int textW(String s) {
+        return measure != null ? measure.textWidth(s) : s.length() * 6;
     }
 
     private void buildWidgets() {
@@ -280,22 +292,29 @@ public final class EditorView implements View {
         }, 12);
         widgets.add(timeline);
 
-        // bin buttons
-        int bby = promptY - 32;
+        // bin buttons: the chosen shot, then the automatic trailer
+        int bby = tlY - 50;
         int half = (binW - 10) / 2;
-        widgets.add(new Button("Aperçu", new Runnable() {
+        previewBtn = new Button("Aperçu", new Runnable() {
             @Override
             public void run() {
                 if (s.selectedShot != null) s.previewShot(s.selectedShot);
             }
-        }).tip("Lire le plan seul dans l'aperçu").bounds(4, bby, half, 14));
-        widgets.add(new Button("Ajouter ▸", new Runnable() {
+        }).tip("Lire le plan choisi seul dans l'aperçu (clic sur le plan)");
+        previewBtn.bounds(4, bby, half, 14);
+        widgets.add(previewBtn);
+        addBtn = new Button("Ajouter ▸", new Runnable() {
             @Override
             public void run() {
-                if (s.selectedShot != null) s.insertShot(s.selectedShot);
+                if (s.selectedShot != null) {
+                    s.insertShot(s.selectedShot);
+                    timeline.follow();
+                }
             }
-        }).tip("Insérer à la tête de lecture (double-clic)").bounds(6 + half, bby, half, 14));
-        final Cycle<TrailerBuilder.Style> style = new Cycle<TrailerBuilder.Style>("", TrailerBuilder.Style.values(), s.trailerStyle,
+        }).tip("Ajouter le plan choisi à la tête de lecture (double-clic sur le plan)");
+        addBtn.bounds(6 + half, bby, half, 14);
+        widgets.add(addBtn);
+        final Cycle<TrailerBuilder.Style> style = new Cycle<TrailerBuilder.Style>("Style", TrailerBuilder.Style.values(), s.trailerStyle,
                 new Cycle.Namer<TrailerBuilder.Style>() {
                     @Override
                     public String name(TrailerBuilder.Style v) {
@@ -307,26 +326,27 @@ public final class EditorView implements View {
                 s.trailerStyle = v;
             }
         });
-        style.tip("Style de la bande-annonce (clic droit : précédent)").bounds(4, bby + 16, half, 14);
+        style.tip("Style de la bande-annonce (clic : suivant, clic droit : précédent)").bounds(4, bby + 16, binW - 8, 14);
         widgets.add(style);
-        widgets.add(new Button("Bande-annonce", new Runnable() {
+        widgets.add(new Button("Créer la bande-annonce", new Runnable() {
             @Override
             public void run() {
                 s.buildTrailer(s.trailerStyle);
                 timeline.fit();
             }
-        }).accent().tip("Remplace le montage par une bande-annonce automatique").bounds(6 + half, bby + 16, half, 14));
+        }).accent().tip("Remplace le montage par une bande-annonce automatique (Ctrl+Z pour revenir)").bounds(4, bby + 32, binW - 8, 14));
+        int rw = textW("Réanalyser") + 10;
         widgets.add(new Button("Réanalyser", new Runnable() {
             @Override
             public void run() {
                 s.analyse();
             }
-        }).tip("Relance le réalisateur automatique (garde les favoris et vos plans)").bounds(binW - 62, topH + 2, 58, 12));
+        }).tip("Relance le réalisateur automatique (garde les favoris et vos plans)").bounds(binW - 4 - rw, topH + 2, rw, 12));
     }
 
     private Button addRightButton(List<Widget> list, int right, int y, String label, Runnable r, int h) {
         Button b = new Button(label, r);
-        int w = Math.max(18, label.length() * 6 + 8);
+        int w = Math.max(18, textW(label) + 10);
         b.bounds(right - w, y, w, h);
         list.add(b);
         return b;
@@ -567,23 +587,22 @@ public final class EditorView implements View {
                 @Override
                 public void run() {
                     c.autoRecord = !c.autoRecord;
-                    auto.label = "Enregistrer automatiquement : " + (c.autoRecord ? "oui" : "non");
+                    auto.label = "Enregistrer dès la connexion : " + (c.autoRecord ? "oui" : "non");
                 }
             };
-            auto.label = "Enregistrer automatiquement : " + (c.autoRecord ? "oui" : "non");
+            auto.label = "Enregistrer dès la connexion : " + (c.autoRecord ? "oui" : "non");
             auto.bounds(x, y + 58, w, 14);
             panelWidgets.add(auto);
-            final Button save = new Button("", null);
-            save.action = new Runnable() {
-                @Override
-                public void run() {
-                    c.autoSave = !c.autoSave;
-                    save.label = "Garder les enregistrements sans demander : " + (c.autoSave ? "oui" : "non");
-                }
-            };
-            save.label = "Garder les enregistrements sans demander : " + (c.autoSave ? "oui" : "non");
-            save.bounds(x, y + 74, w, 14);
-            panelWidgets.add(save);
+            // size of the Redo screens, applied with "Enregistrer et fermer"
+            final Cycle<Integer> size = new Cycle<Integer>("Taille de l'interface", new Integer[]{0, 1, 2, 3, 4, 5, 6}, c.uiScale,
+                    new Cycle.Namer<Integer>() {
+                        @Override
+                        public String name(Integer v) {
+                            return v == 0 ? "auto" : "×" + v;
+                        }
+                    }, null);
+            size.bounds(x, y + 74, w, 14);
+            panelWidgets.add(size);
             panelWidgets.add(new Slider("Vitesse de la caméra libre", 2, 60, 1, c.flySpeed, new Slider.Listener() {
                 @Override
                 public void changed(double v, boolean released) {
@@ -601,6 +620,7 @@ public final class EditorView implements View {
                 public void run() {
                     c.claudeApiKey = key.text().trim();
                     c.claudeModel = model.text().trim().isEmpty() ? fr.orakun.redo.core.prompt.ClaudeClient.DEFAULT_MODEL : model.text().trim();
+                    c.uiScale = size.value();
                     c.save();
                     panel = Panel.NONE;
                     lastLayoutW = -1;
@@ -682,11 +702,25 @@ public final class EditorView implements View {
         int cx = W / 2, cy = H / 2;
         g.fill(cx - 4, cy, cx + 5, cy + 1, 0x90FFFFFF);
         g.fill(cx, cy - 4, cx + 1, cy + 5, 0x90FFFFFF);
-        String l1 = "Clic + souris : viser   Touches de déplacement : voler   Molette : vitesse de vol   Ctrl+molette : zoom   Alt+molette : inclinaison   R : objectif par défaut";
-        String l2 = "K : image clé   Entrée : créer le plan   Retour arrière : effacer les images   P : lecture/pause   ← → : 5 s   ↑ ↓ : vitesse du replay   Tab/Échap : montage";
-        g.fill(0, H - 26, W, H, 0xA0000000);
-        g.text(Widget.fit(g, l1, W - 10), 5, H - 23, Theme.TEXT_DIM, false);
-        g.text(Widget.fit(g, l2, W - 10), 5, H - 12, Theme.TEXT_DIM, false);
+        // key help, on as many lines as the width needs
+        String[] hints = {"Clic + souris : viser", "Touches de déplacement : voler", "Molette : vitesse de vol", "Ctrl+molette : zoom",
+                "Alt+molette : inclinaison", "R : objectif par défaut", "K : image clé", "Entrée : créer le plan",
+                "Retour arrière : effacer les images", "P : lecture/pause", "← → : 5 s", "↑ ↓ : vitesse du replay", "Tab/Échap : montage"};
+        List<String> lines = new ArrayList<String>();
+        String line = "";
+        for (String hnt : hints) {
+            String next = line.isEmpty() ? hnt : line + "   " + hnt;
+            if (!line.isEmpty() && g.textWidth(next) > W - 10) {
+                lines.add(line);
+                line = hnt;
+            } else {
+                line = next;
+            }
+        }
+        if (!line.isEmpty()) lines.add(line);
+        int hy = H - lines.size() * 11 - 4;
+        g.fill(0, hy, W, H, 0xA0000000);
+        for (int i = 0; i < lines.size(); i++) g.text(Widget.fit(g, lines.get(i), W - 10), 5, hy + 3 + i * 11, Theme.TEXT_DIM, false);
         renderToasts(g);
     }
 
@@ -800,6 +834,7 @@ public final class EditorView implements View {
             g.text(Widget.fit(g, back, vpW - 220), vpX + vpW - 4 - Math.min(g.textWidth(back), vpW - 220), ctrlY + 4, Theme.TEXT_DIM, false);
         }
 
+        previewBtn.enabled = addBtn.enabled = s.selectedShot != null;
         for (Widget w : widgets) w.render(g, hoverX, hoverY);
         for (Widget w : inspector) w.render(g, hoverX, hoverY);
 
@@ -833,29 +868,55 @@ public final class EditorView implements View {
     }
 
     private int binBottom() {
-        return promptY - 34;
+        return tlY - 52;
     }
 
     private static final int ROW = 24;
 
     private void renderBin(Gfx g, int mx, int my) {
+        List<ShotSuggestion> list = filtered();
         g.text("Chutier", 5, topH + 4, Theme.TEXT, false);
+        g.text(String.valueOf(list.size()), 9 + g.textWidth("Chutier"), topH + 4, Theme.TEXT_DIM, false);
+        // filter tabs, as wide as the bin allows
+        int textSum = 0;
+        for (String f : FILTERS) textSum += g.textWidth(f);
+        int avail = binW - 8 - (FILTERS.length - 1) * 2;
+        int pad = clamp((avail - textSum) / FILTERS.length, 2, 12);
         int fx = 4;
         for (int i = 0; i < FILTERS.length; i++) {
-            int w = g.textWidth(FILTERS[i]) + 6;
+            int w = g.textWidth(FILTERS[i]) + pad;
+            tabX0[i] = fx;
+            tabX1[i] = fx + w;
             boolean on = i == filter;
-            g.fill(fx, topH + 16, fx + w, topH + 27, on ? Theme.BUTTON_ON : Theme.BUTTON);
+            boolean hover = mx >= fx && mx < fx + w && my >= topH + 16 && my < topH + 27;
+            g.fill(fx, topH + 16, fx + w, topH + 27, on ? Theme.BUTTON_ON : hover ? Theme.BUTTON_HOVER : Theme.BUTTON);
             if (on) g.fill(fx, topH + 26, fx + w, topH + 27, Theme.ACCENT);
-            g.text(FILTERS[i], fx + 3, topH + 18, on ? Theme.TEXT : Theme.TEXT_DIM, false);
+            g.text(FILTERS[i], fx + (w - g.textWidth(FILTERS[i])) / 2, topH + 18, on ? Theme.TEXT : Theme.TEXT_DIM, false);
             fx += w + 2;
         }
-        List<ShotSuggestion> list = filtered();
+        if (timeline.picked != null) {
+            // a moment was clicked on the "Partie" strip: show its shot
+            ShotSuggestion p = timeline.picked;
+            timeline.picked = null;
+            if (!filtered().contains(p)) {
+                filter = 0;
+                list = filtered();
+            }
+            int idx = list.indexOf(p);
+            int top = binTop(), bottom = binBottom();
+            if (idx >= 0 && (idx * ROW < binScroll || (idx + 1) * ROW > binScroll + bottom - top)) binScroll = idx * ROW - (bottom - top - ROW) / 2;
+        }
         int top = binTop(), bottom = binBottom();
         int maxScroll = Math.max(0, list.size() * ROW - (bottom - top));
         binScroll = Math.max(0, Math.min(binScroll, maxScroll));
         g.pushClip(0, top, binW, bottom);
         if (list.isEmpty()) {
-            g.text(s.analysing ? "Analyse en cours…" : "Aucun plan ici.", 6, top + 6, Theme.TEXT_DIM, false);
+            String hint = s.analysing ? "Analyse en cours…"
+                    : filter == 2 ? "Écris une demande sous l'aperçu, puis Générer."
+                    : filter == 3 ? "Caméra libre (Tab) : K pose une image clé, Entrée crée le plan."
+                    : filter == 4 ? "Clique sur ☆ à droite d'un plan pour le garder ici."
+                    : "Aucun plan : clique sur Réanalyser.";
+            wrap(g, hint, 6, top + 6, binW - 12, Theme.TEXT_DIM);
         }
         for (int i = 0; i < list.size(); i++) {
             int ry = top + i * ROW - binScroll;
@@ -934,18 +995,58 @@ public final class EditorView implements View {
         }
     }
 
+    /** Help bubble of what is under the mouse, after a short rest so it does not flicker. */
     private void renderTooltip(Gfx g, int mx, int my) {
-        for (Widget w : widgets) {
-            if (w.tooltip != null && w.contains(mx, my)) {
-                String t = w.tooltip;
-                int tw = Math.min(g.textWidth(t), W - 10);
-                int x = Math.min(mx + 8, W - tw - 6), y = my + 12;
-                if (y + 12 > H) y = my - 14;
-                g.fill(x - 3, y - 2, x + tw + 3, y + 10, 0xF0000000);
-                g.text(Widget.fit(g, t, W - 10), x, y, Theme.TEXT, false);
-                return;
+        String t = hoverTip(mx, my);
+        long now = System.currentTimeMillis();
+        if (t == null || !t.equals(tipText)) {
+            tipText = t;
+            tipSince = now;
+        }
+        if (t == null || now - tipSince < 350) return;
+        int tw = Math.min(g.textWidth(t), W - 10);
+        int x = Math.max(4, Math.min(mx + 8, W - tw - 6)), y = my + 12;
+        if (y + 12 > H) y = my - 14;
+        g.fill(x - 3, y - 2, x + tw + 3, y + 10, 0xF0000000);
+        Widget.frame(g, x - 3, y - 2, x + tw + 3, y + 10, Theme.BORDER);
+        g.text(Widget.fit(g, t, W - 10), x, y, Theme.TEXT, false);
+    }
+
+    private String hoverTip(int mx, int my) {
+        if (mx < 0 || my < 0) return null;
+        for (Widget w : inspector) if (w.contains(mx, my)) return w.tooltipAt(mx, my);
+        for (Widget w : widgets) if (w.contains(mx, my)) return w.tooltipAt(mx, my);
+        if (mx < binW && my >= topH + 16 && my < topH + 27) {
+            for (int i = 0; i < FILTERS.length; i++) if (mx >= tabX0[i] && mx < tabX1[i]) return FILTER_TIPS[i];
+        }
+        if (mx < binW && my >= binTop() && my < binBottom()) {
+            List<ShotSuggestion> list = filtered();
+            int i = (my - binTop() + binScroll) / ROW;
+            if (i < 0 || i >= list.size()) return null;
+            if (mx > binW - 14) return list.get(i).favorite ? "Retirer des favoris" : "Garder en favori";
+            return "Clic : aperçu · double-clic : ajouter à la timeline";
+        }
+        return null;
+    }
+
+    /** Draws {@code text} on several lines of at most {@code maxW}; returns the y below it. */
+    private static int wrap(Gfx g, String text, int x, int y, int maxW, int color) {
+        String line = "";
+        for (String word : text.split(" ")) {
+            String next = line.isEmpty() ? word : line + " " + word;
+            if (!line.isEmpty() && g.textWidth(next) > maxW) {
+                g.text(line, x, y, color, false);
+                y += 10;
+                line = word;
+            } else {
+                line = next;
             }
         }
+        if (!line.isEmpty()) {
+            g.text(Widget.fit(g, line, maxW), x, y, color, false);
+            y += 10;
+        }
+        return y;
     }
 
     private void renderPanel(Gfx g, int mx, int my) {
@@ -965,23 +1066,23 @@ public final class EditorView implements View {
             else if (downloader != null && downloader.error() != null) st = "Échec : " + downloader.error();
             g.text(Widget.fit(g, st, w), x, py + 26 + 108, ff != null ? Theme.GREEN : Theme.TEXT_DIM, false);
             g.text(Widget.fit(g, "Durée : " + Director.formatTime(s.sequence.duration()) + " · rendu image par image, sans saccade.", w), x, py + 26 + 122, Theme.TEXT_DIM, false);
-            g.text(Widget.fit(g, "Astuce : agrandissez la fenêtre pour un rendu plus net.", w), x, py + 26 + 134, Theme.TEXT_DIM, false);
+            g.text(Widget.fit(g, "Astuce : plus la fenêtre est grande, plus c'est net.", w), x, py + 26 + 134, Theme.TEXT_DIM, false);
         } else if (panel == Panel.SETTINGS) {
             g.text("Clé API Claude (pour le prompt)", x, py + 26, Theme.TEXT_DIM, false);
             g.text("Modèle", x, py + 54, Theme.TEXT_DIM, false);
             g.text(Widget.fit(g, "Touches : " + Keys.name(Redo.config().keyHighlight) + " temps fort, " + Keys.name(Redo.config().keyMarker) + " marqueur", w),
                     x, py + 26 + 132, Theme.TEXT_DIM, false);
         } else {
-            String[] lines = {
-                    "Redo a préparé des plans tout seul : ils sont dans le chutier.",
-                    "Double-cliquez un plan pour l'ajouter à la timeline.",
-                    "« Bande-annonce » monte une vidéo complète automatiquement.",
+            String[] paragraphs = {
+                    "Redo a préparé des plans tout seul : ils sont dans le chutier. Clic : aperçu, double-clic : ajouter à la timeline.",
+                    "« Créer la bande-annonce » monte une vidéo complète toute seule.",
+                    "La bande « Partie » sous la timeline montre les moments repérés : cliquez-en un pour voir ses plans.",
                     "Le prompt crée des plans à partir d'une phrase.",
-                    "Caméra libre (Tab) : volez avec ZQSD/WASD, K pose une",
-                    "image clé, Entrée crée le plan, Tab revient au montage.",
-                    "Pendant la partie : " + Keys.name(Redo.config().keyHighlight) + " marque un temps fort,",
-                    Keys.name(Redo.config().keyMarker) + " pose un marqueur. Exporter : MP4, ProRes, PNG."};
-            for (int i = 0; i < lines.length; i++) g.text(Widget.fit(g, lines[i], w), x, py + 26 + i * 12, Theme.TEXT, false);
+                    "Caméra libre (Tab) : volez avec vos touches de déplacement, K pose une image clé, Entrée crée le plan.",
+                    "En jeu : " + Keys.name(Redo.config().keyHighlight) + " marque un temps fort, " + Keys.name(Redo.config().keyMarker)
+                            + " pose un marqueur. Survolez un bouton pour voir son aide."};
+            int ly = py + 26;
+            for (String p : paragraphs) ly = wrap(g, p, x, ly, w, Theme.TEXT) + 3;
         }
         for (Widget wd : panelWidgets) wd.render(g, mx, my);
     }
@@ -1090,15 +1191,12 @@ public final class EditorView implements View {
         }
         // bin filters
         if (my >= topH + 16 && my < topH + 27 && mx < binW) {
-            int fx = 4;
             for (int i = 0; i < FILTERS.length; i++) {
-                int w = FILTERS[i].length() * 6 + 6;
-                if (mx >= fx && mx < fx + w) {
+                if (mx >= tabX0[i] && mx < tabX1[i]) {
                     filter = i;
                     binScroll = 0;
                     return true;
                 }
-                fx += w + 2;
             }
         }
         // bin rows

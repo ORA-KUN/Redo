@@ -21,6 +21,11 @@ public abstract class Widget {
 
     public abstract void render(Gfx g, int mx, int my);
 
+    /** Help text shown when the mouse rests at (mx, my) over the widget, or null. */
+    public String tooltipAt(int mx, int my) {
+        return tooltip;
+    }
+
     /** Returns true if the click was used. */
     public boolean mouseDown(double mx, double my, int button) {
         return false;
