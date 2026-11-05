@@ -1,0 +1,86 @@
+# One class per line (javap -p), or "grep <regex>" to list matching class names.
+grep ^net/minecraft/client/[A-Za-z]+\.class
+grep ^net/minecraft/network/[A-Za-z]+\.class
+grep ^net/minecraft/client/multiplayer/[A-Za-z]+\.class
+grep ^net/minecraft/client/gui/[A-Za-z]+\.class
+grep ^net/minecraft/client/input/
+grep ^net/minecraft/client/gui/render/
+grep ^com/mojang/blaze3d/(platform|pipeline|systems|textures)/[A-Za-z]+\.class
+net.minecraft.client.Minecraft
+net.minecraft.client.Camera
+net.minecraft.client.DeltaTracker
+net.minecraft.client.DeltaTracker$Timer
+net.minecraft.client.KeyboardHandler
+net.minecraft.client.MouseHandler
+net.minecraft.client.Options
+net.minecraft.client.Screenshot
+net.minecraft.client.renderer.GameRenderer
+net.minecraft.client.renderer.LevelRenderer
+net.minecraft.client.gui.Gui
+net.minecraft.client.gui.GuiGraphics
+net.minecraft.client.gui.Font
+net.minecraft.client.gui.screens.Screen
+net.minecraft.client.gui.screens.TitleScreen
+net.minecraft.client.gui.screens.PauseScreen
+net.minecraft.client.gui.screens.ConnectScreen
+net.minecraft.client.gui.screens.ReceivingLevelScreen
+net.minecraft.client.gui.screens.LevelLoadingScreen
+net.minecraft.client.gui.components.Button
+net.minecraft.client.gui.components.AbstractWidget
+net.minecraft.client.player.LocalPlayer
+net.minecraft.client.player.RemotePlayer
+net.minecraft.client.player.AbstractClientPlayer
+net.minecraft.client.multiplayer.ClientLevel
+net.minecraft.client.multiplayer.ClientPacketListener
+net.minecraft.client.multiplayer.ClientCommonPacketListenerImpl
+net.minecraft.client.multiplayer.ClientHandshakePacketListenerImpl
+net.minecraft.client.multiplayer.ClientConfigurationPacketListenerImpl
+net.minecraft.client.multiplayer.CommonListenerCookie
+net.minecraft.client.multiplayer.MultiPlayerGameMode
+net.minecraft.client.multiplayer.ServerData
+net.minecraft.network.Connection
+net.minecraft.network.PacketDecoder
+net.minecraft.network.ProtocolInfo
+net.minecraft.network.UnconfiguredPipelineHandler
+net.minecraft.network.HandlerNames
+net.minecraft.network.protocol.PacketFlow
+net.minecraft.network.protocol.Packet
+net.minecraft.network.protocol.game.GameProtocols
+net.minecraft.network.protocol.configuration.ConfigurationProtocols
+net.minecraft.network.protocol.login.LoginProtocols
+net.minecraft.network.protocol.game.ClientboundLoginPacket
+net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket
+net.minecraft.network.protocol.game.ClientboundGameEventPacket
+net.minecraft.network.protocol.game.ClientboundDamageEventPacket
+net.minecraft.network.protocol.game.ClientboundEntityEventPacket
+net.minecraft.network.protocol.game.ClientboundPlayerCombatKillPacket
+net.minecraft.network.protocol.game.ClientboundAnimatePacket
+net.minecraft.network.protocol.game.ClientboundExplodePacket
+net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket
+net.minecraft.network.protocol.game.ClientboundSystemChatPacket
+net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket
+net.minecraft.network.protocol.game.ClientboundRespawnPacket
+net.minecraft.network.protocol.game.ClientboundSetHealthPacket
+net.minecraft.network.protocol.game.ClientboundPlayerAbilitiesPacket
+net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket
+net.minecraft.network.protocol.common.ClientboundDisconnectPacket
+net.minecraft.world.TickRateManager
+net.minecraft.world.entity.Entity
+net.minecraft.world.entity.LivingEntity
+net.minecraft.world.entity.player.Player
+net.minecraft.world.level.Level
+net.minecraft.world.level.ClipContext
+net.minecraft.world.level.levelgen.Heightmap$Types
+net.minecraft.world.level.block.state.BlockBehaviour$BlockStateBase
+net.minecraft.world.phys.Vec3
+net.minecraft.world.phys.HitResult
+net.minecraft.core.BlockPos
+net.minecraft.core.registries.BuiltInRegistries
+net.minecraft.world.item.ItemStack
+net.minecraft.world.entity.EquipmentSlot
+net.minecraft.network.chat.Component
+com.mojang.blaze3d.pipeline.RenderTarget
+com.mojang.blaze3d.platform.Window
+com.mojang.blaze3d.platform.InputConstants
+com.mojang.blaze3d.platform.NativeImage
+com.mojang.blaze3d.systems.RenderSystem

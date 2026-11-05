@@ -1,0 +1,9 @@
+{
+  "required": true,
+  "package": "fr.orakun.redo.fabric.mixin",
+  "compatibilityLevel": "${java}",
+  "client": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
