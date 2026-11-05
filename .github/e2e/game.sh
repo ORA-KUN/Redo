@@ -57,6 +57,8 @@ generate-structures=false
 view-distance=6
 simulation-distance=6
 spawn-protection=0
+white-list=false
+enforce-whitelist=false
 spawn-monsters=false
 motd=Redo E2E
 EOF
@@ -71,6 +73,8 @@ for i in $(seq 1 240); do
     sleep 1
 done
 grep -q "Done (" server.log || { echo "server did not start"; tail -50 server.log; exit 1; }
+# 26.3 servers start with the whitelist on: the test player must be let in
+echo "whitelist off" >&3
 echo "server ready"
 
 # Server-side "director": once the player is in, spawn animals and build a tower block by

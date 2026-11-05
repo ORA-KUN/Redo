@@ -12,6 +12,7 @@ import fr.orakun.redo.core.ui.RecordingsView;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.Connection;
@@ -131,7 +132,7 @@ final class E2E {
                         return;
                     }
                     next(Step.RECORD);
-                } else if (ticks > 20 * 180) {
+                } else if (ticks > 20 * 180 || Compat.screen() instanceof DisconnectedScreen) {
                     fail("could not join the test server: " + joinState());
                 } else if (ticks % 200 == 0) {
                     log("joining: " + joinState());
