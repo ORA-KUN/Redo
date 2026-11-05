@@ -24,7 +24,6 @@ import fr.orakun.redo.core.timeline.Sequence;
 import fr.orakun.redo.core.track.EventTrack;
 
 import java.io.File;
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -138,9 +137,6 @@ public final class EditorSession {
         Runnable r;
         while ((r = mainQueue.poll()) != null) r.run();
         dtMs = Math.max(0, Math.min(dtMs, 250));
-        if (export != null && export.state() != ExportJob.State.RENDERING) {
-            // export finished, failed or cancelled: the platform shows the result
-        }
         if (export != null && export.isActive()) return;
 
         if (mode == Mode.FREE_CAMERA) {
@@ -616,8 +612,5 @@ public final class EditorSession {
     /** Helper used by the timeline to show where clips come from. */
     public static String clipLabel(Clip c) {
         return c.name == null || c.name.isEmpty() ? "Plan" : c.name;
-    }
-
-    static void unused(IOException e) {
     }
 }
