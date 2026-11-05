@@ -136,3 +136,24 @@ jobs:
         with:
           name: e2e-${{ matrix.mc }}
           path: e2e-out/
+
+  release:
+    name: Publish the jars
+    # Each merge into main (all builds and in-game tests green) replaces the Release of the
+    # current version, with one jar per Minecraft version under a fixed name, so that
+    # https://github.com/ORA-KUN/Redo/releases/latest/download/redo-<version>.jar never changes.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [core, forge, fabric, e2e]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: redo-*
+          path: dist
+      - name: Publish the Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/release.sh

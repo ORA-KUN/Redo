@@ -16,10 +16,12 @@ Un enregistrement se relit avec la version de Minecraft qui l'a fait (le format 
 
 ## Installation
 
-- **1.8.9** : mets `redo-<version>.jar` dans `.minecraft/mods` avec Forge 1.8.9.
-- **1.21.11, 26.1, 26.2, 26.3** : installe Fabric Loader, puis mets le jar de ta version (`redo-<version>+1.21.11.jar`, `redo-<version>+26.1.jar`…) dans `.minecraft/mods`. Fabric API n'est pas nécessaire.
+- **1.8.9** : mets `redo-1.8.9.jar` dans `.minecraft/mods` avec Forge 1.8.9.
+- **1.21.11, 26.1, 26.2, 26.3** : installe Fabric Loader, puis mets le jar de ta version (`redo-1.21.11.jar`, `redo-26.1.jar`…) dans `.minecraft/mods`. Fabric API n'est pas nécessaire.
 
-Les jars sont produits par la CI (onglet Actions du dépôt, un artefact `redo-<version de Minecraft>` par version).
+**Télécharger** : [dernière version](https://github.com/ORA-KUN/Redo/releases/latest), ou directement le jar de ta version : [1.8.9](https://github.com/ORA-KUN/Redo/releases/latest/download/redo-1.8.9.jar) · [1.21.11](https://github.com/ORA-KUN/Redo/releases/latest/download/redo-1.21.11.jar) · [26.1](https://github.com/ORA-KUN/Redo/releases/latest/download/redo-26.1.jar) · [26.2](https://github.com/ORA-KUN/Redo/releases/latest/download/redo-26.2.jar) · [26.3](https://github.com/ORA-KUN/Redo/releases/latest/download/redo-26.3.jar). Ces liens ne changent jamais : chaque fusion dans `main` (une fois tous les tests en jeu passés) remplace les jars par les nouveaux.
+
+**Lunar Client** : Lunar n'accepte tes propres mods qu'en Fabric, à partir de la 1.16.5. Choisis ta version, prends Fabric comme chargeur, puis glisse le jar dans l'onglet Mods. Le module Forge 1.8.9 de Lunar n'accepte pas de mods ajoutés, donc Redo 1.8.9 s'utilise avec Forge (launcher officiel, Prism Launcher…). Redo n'a pas encore été testé dans Lunar.
 
 ## Utilisation
 
