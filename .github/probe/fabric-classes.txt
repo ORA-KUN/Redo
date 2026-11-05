@@ -1,26 +1,13 @@
 # One class per line (javap -p). "Class :: regex" keeps only matching members (constructors always kept).
 # "grep <regex>" lists the class names matching the regex.
-# Round 4: what changed between 1.21.11 and 26.1 / 26.2 / 26.3
-grep ^net/minecraft/client/gui/(Gui|Hud)[A-Za-z$]*\.class
-grep ^net/minecraft/client/gui/screens/Screen[A-Z][A-Za-z$]*\.class
-grep ^net/minecraft/client/[A-Za-z]*(Screen|Hud)[A-Za-z$]*\.class
-grep GuiMessageTag\.class
-grep ^com/mojang/blaze3d/pipeline/[A-Za-z$]*\.class
-net.minecraft.client.Minecraft :: [Ss]creen|Target|[Gg]ui|[Hh]ud|[Ww]indow|options|runTick|tick\(|deltaTracker|disconnect\(|camera|Camera
-net.minecraft.client.renderer.GameRenderer :: render|Fov|fov|bob|Camera|camera|Target|extract
-net.minecraft.client.Camera :: setup|update|align|setPosition|setRotation|[Ff]ov|rotation|forwards|up;|left;|detached|extract|tick\(
-net.minecraft.client.DeltaTracker$Timer
-net.minecraft.client.Options :: [Hh]ide|[Hh]ud|[Gg]ui
-net.minecraft.client.gui.Gui :: render|extract|[Hh]ud|hidden|Hidden|[Ss]creen
-net.minecraft.client.gui.Hud :: render|extract|[Hh]idden|toggle
-net.minecraft.client.gui.GuiGraphicsExtractor :: fill\(|text\(|drawString|[Ss]cissor|guiWidth|guiHeight
-net.minecraft.client.gui.screens.Screen :: render|extract|[Bb]ackground|init\(
-net.minecraft.client.gui.components.ChatComponent :: addMessage
-net.minecraft.util.Util$OS
-net.minecraft.world.entity.LivingEntity :: swing|Swing|attackAnim
-com.mojang.blaze3d.platform.InputConstants :: isKeyDown
-com.mojang.blaze3d.platform.Window :: [Ww]idth|[Hh]eight|Target|handle
-net.minecraft.client.Screenshot :: takeScreenshot|grab
-net.minecraft.network.protocol.login.ClientboundLoginFinishedPacket :: <init>
-net.minecraft.world.level.block.state.BlockBehaviour$BlockStateBase :: blocksMotion|isSolid|[Cc]ollision
-net.minecraft.client.renderer.LevelRenderer :: Target|render
+# "code Class :: regex" prints the bytecode of the methods whose declaration matches the regex.
+# Round 5: how the client handles packets that arrive on its own thread (replay connection)
+grep PacketProcessor
+net.minecraft.network.PacketProcessor
+code net.minecraft.network.PacketProcessor :: isSameThread|scheduleIfPossible|processQueuedPackets
+code net.minecraft.network.protocol.PacketUtils :: ensureRunningOnSameThread
+net.minecraft.client.Minecraft :: [Pp]acketProcessor|runTick|tick\(
+code net.minecraft.client.Minecraft :: runTick\(|packetProcessor\(
+code net.minecraft.client.multiplayer.ClientConfigurationPacketListenerImpl :: handleConfigurationFinished
+code net.minecraft.network.Connection :: setupInboundProtocol|channelRead0
+net.minecraft.network.Connection :: getPacketListener|setupInboundProtocol

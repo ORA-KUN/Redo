@@ -81,6 +81,17 @@ final class LegacyE2E {
         }
     }
 
+    /** What the replay is doing, for the log. */
+    private static String state(ReplayController c) {
+        Minecraft mc = Minecraft.getMinecraft();
+        String shown = mc.currentScreen == null ? "no screen" : mc.currentScreen instanceof RedoGuiScreen
+                ? "RedoGuiScreen/" + ((RedoGuiScreen) mc.currentScreen).view.getClass().getSimpleName()
+                : mc.currentScreen.getClass().getSimpleName();
+        String s = shown + ", world " + (mc.theWorld != null) + ", player " + (mc.thePlayer != null);
+        if (c != null) s += ", time " + (long) c.replay.timeMs() + " ms, seeking " + c.replay.isSeeking() + ", paused " + c.replay.isPaused();
+        return s;
+    }
+
     /** Called at the start of every frame; counts its own 20 Hz ticks from the wall clock. */
     static void frame() {
         if (step == Step.DONE) return;
@@ -188,6 +199,7 @@ final class LegacyE2E {
                     return;
                 }
                 boolean editor = mc.currentScreen instanceof RedoGuiScreen && ((RedoGuiScreen) mc.currentScreen).view instanceof EditorView;
+                if (ticks % 100 == 0) log("waiting for the editor: " + state(c));
                 if (editor && mc.theWorld != null && mc.thePlayer != null && !c.replay.isSeeking() && ticks > 20 * 3) {
                     EditorSession s = c.session();
                     log("replay world ready: player at " + (int) mc.thePlayer.posX + " " + (int) mc.thePlayer.posY + " "
@@ -197,7 +209,8 @@ final class LegacyE2E {
                     shot("editor");
                     next(Step.PLAY);
                 } else if (ticks > 20 * 120) {
-                    fail("the editor did not open (screen " + (mc.currentScreen == null ? "none" : mc.currentScreen.getClass().getSimpleName()) + ")");
+                    shot("editor-missing");
+                    fail("the editor did not open: " + state(c));
                 }
                 break;
             }

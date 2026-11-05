@@ -100,6 +100,23 @@ tasks {
                     }
                     continue
                 }
+                if (line.startsWith("code ")) {
+                    // "code Class :: regex": bytecode of the methods whose declaration matches the regex
+                    val cls = line.removePrefix("code ").substringBefore(" :: ").trim()
+                    val filter = Regex(line.substringAfter(" :: ").trim())
+                    val proc = ProcessBuilder("javap", "-p", "-c", "-cp", cpString, cls).redirectErrorStream(true).start()
+                    val text = proc.inputStream.bufferedReader().readLines()
+                    proc.waitFor()
+                    sb.append("CODE ").append(cls).append('\n')
+                    var keep = false
+                    for (l in text) {
+                        val declaration = l.startsWith("  ") && !l.startsWith("   ") && l.trim().isNotEmpty()
+                        if (declaration) keep = filter.containsMatchIn(l)
+                        if (keep || l.startsWith("Error")) sb.append(l).append('\n')
+                    }
+                    sb.append('\n')
+                    continue
+                }
                 // "Class :: regex" keeps only the members matching the regex
                 val cls = line.substringBefore(" :: ").trim()
                 val filter = if (line.contains(" :: ")) Regex(line.substringAfter(" :: ").trim()) else null

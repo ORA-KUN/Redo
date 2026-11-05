@@ -115,6 +115,43 @@ tasks.shadowJar {
 
 tasks.assemble.get().dependsOn(tasks.remapJar)
 
+// Gradle 8 refuses to run loom 0.10's runClient task ("property 'main' is missing an input or output
+// annotation"), so the CI in-game test starts the same run configuration with a plain JavaExec task:
+// REDO_E2E=1 ./gradlew runE2E --args="..."
+tasks.register<JavaExec>("runE2E") {
+    group = "verification"
+    val run = tasks.getByName("runClient") as JavaExec
+    dependsOn(run.dependsOn)
+    var type: Class<*>? = run.javaClass
+    var configField: java.lang.reflect.Field? = null
+    while (type != null && configField == null) {
+        configField = type.declaredFields.firstOrNull { it.name == "config" }
+        type = type.superclass
+    }
+    val config = configField?.let { it.isAccessible = true; it.get(run) }
+        ?: throw GradleException("runE2E: loom's run configuration was not found")
+    fun field(name: String): Any? = runCatching { config.javaClass.getField(name).get(config) }.getOrNull()
+    fun strings(v: Any?): List<String> = when (v) {
+        null -> emptyList()
+        is Collection<*> -> v.map { it.toString() }
+        else -> v.toString().split(' ').filter { it.isNotBlank() }
+    }
+    val loomArgs = strings(field("programArgs"))
+    classpath = run.classpath
+    mainClass.set(field("mainClass") as String)
+    jvmArgs(run.jvmArgs ?: strings(field("vmArgs")))
+    @Suppress("UNCHECKED_CAST")
+    (field("environmentVariables") as? Map<String, Any>)?.let { environment(it) }
+    workingDir = rootProject.file(field("runDir") as? String ?: "run")
+    javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(8)) })
+    doFirst {
+        workingDir.mkdirs()
+        // after the command line's --args, which replace the task's arguments
+        args(loomArgs)
+        println("runE2E: ${mainClass.get()} ${jvmArgs} ${args}")
+    }
+}
+
 // Prints the signatures of chosen Minecraft classes (used to write the version-specific code).
 tasks.register("redoProbe") {
     group = "help"
