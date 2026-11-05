@@ -11,6 +11,7 @@ import fr.orakun.redo.core.replay.ReplayController;
 import fr.orakun.redo.core.ui.RecordingsView;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.Connection;
@@ -131,7 +132,9 @@ final class E2E {
                     }
                     next(Step.RECORD);
                 } else if (ticks > 20 * 180) {
-                    fail("could not join the test server");
+                    fail("could not join the test server: " + joinState());
+                } else if (ticks % 200 == 0) {
+                    log("joining: " + joinState());
                 }
                 break;
             case RECORD:
@@ -327,6 +330,23 @@ final class E2E {
             default:
                 break;
         }
+    }
+
+    /** What the client shows while it joins the server, for the log. */
+    private static String joinState() {
+        Screen screen = Compat.screen();
+        StringBuilder s = new StringBuilder();
+        if (screen == null) {
+            s.append("no screen");
+        } else {
+            s.append(screen.getClass().getName()).append(" \"").append(screen.getTitle().getString()).append('"');
+            for (Object child : screen.children()) {
+                if (child instanceof AbstractWidget) s.append(" [").append(((AbstractWidget) child).getMessage().getString()).append(']');
+            }
+        }
+        s.append(", recording ").append(Recorder.isRecording());
+        if (Recorder.session() != null) s.append(" (").append(Recorder.session().packetBytes()).append(" bytes)");
+        return s.toString();
     }
 
     /** What the replay is doing, for the log. */

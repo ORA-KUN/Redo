@@ -145,4 +145,6 @@ if grep -q "REDO E2E OK" "$LOG" "$OUT/client-console.log" 2>/dev/null; then
 fi
 echo "== REDO E2E FAILED"
 grep -E "\[Redo E2E\]|REDO E2E FAIL|Mixin|mixin|Exception|Error" "$OUT/client-console.log" 2>/dev/null | head -200
+echo "== Server log (end)"
+tail -60 "$SRV/server.log"
 exit 1
