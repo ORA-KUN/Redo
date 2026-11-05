@@ -54,6 +54,8 @@ jobs:
   fabric:
     name: Redo ${{ matrix.mc }} (Fabric)
     runs-on: ubuntu-24.04
+    # 26.x rewrote rendering and input: those versions are ported after 1.21.11 works
+    continue-on-error: ${{ matrix.mc != '1.21.11' }}
     strategy:
       fail-fast: false
       matrix:

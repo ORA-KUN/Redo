@@ -144,6 +144,33 @@ public final class EventTrack {
         return equipment;
     }
 
+    /** The recording player's state at time t, interpolated between ticks, or null. */
+    public SelfSample selfAt(double t) {
+        if (self.isEmpty()) return null;
+        int lo = 0, hi = self.size() - 1, best = -1;
+        while (lo <= hi) {
+            int mid = (lo + hi) >>> 1;
+            if (self.get(mid).timeMs <= t) {
+                best = mid;
+                lo = mid + 1;
+            } else {
+                hi = mid - 1;
+            }
+        }
+        if (best < 0) return self.get(0);
+        SelfSample a = self.get(best);
+        if (best == self.size() - 1) return a;
+        SelfSample b = self.get(best + 1);
+        if (b.timeMs - a.timeMs > 1000) return a;
+        double u = (t - a.timeMs) / Math.max(1.0, b.timeMs - a.timeMs);
+        return new SelfSample((int) t, a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u, a.z + (b.z - a.z) * u,
+                (float) Angles.lerp(a.yaw, Angles.unwrapNear(a.yaw, b.yaw), u),
+                (float) (a.pitch + (b.pitch - a.pitch) * u),
+                (float) Angles.lerp(a.headYaw, Angles.unwrapNear(a.headYaw, b.headYaw), u),
+                (float) Angles.lerp(a.bodyYaw, Angles.unwrapNear(a.bodyYaw, b.bodyYaw), u),
+                u < 0.5 ? a.flags : b.flags, a.actions | b.actions);
+    }
+
     public Integer removalTime(int id) {
         return removals.get(id);
     }

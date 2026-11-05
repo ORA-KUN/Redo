@@ -172,6 +172,8 @@ public final class Recorder {
             selfId = selfState.id;
             selfAnnounced = true;
             s.meta.selfEntityId = selfId;
+            s.meta.selfUuid = selfState.uuid;
+            s.meta.selfName = selfState.name;
             s.entity(new EntityInfo(selfId, selfState.uuid, selfState.name, "minecraft:player", true, true));
         }
         recordSelf(s, t);
