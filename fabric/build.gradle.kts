@@ -79,7 +79,7 @@ tasks {
         val mcVersion = sc.current.version
         val cp = configurations.named("compileClasspath")
         doLast {
-            val jars = cp.get().files.filter { it.name.contains("minecraft") && it.name.endsWith(".jar") }
+            val jars = cp.get().files.filter { (it.name.contains("minecraft") || it.name.contains("authlib")) && it.name.endsWith(".jar") }
             println("PROBE $mcVersion jars: " + jars.joinToString { it.name })
             val out = rootProject.layout.buildDirectory.file("probe/$mcVersion.txt").get().asFile
             out.parentFile.mkdirs()
